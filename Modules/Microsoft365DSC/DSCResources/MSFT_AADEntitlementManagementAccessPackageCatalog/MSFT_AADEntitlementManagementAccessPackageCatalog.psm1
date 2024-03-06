@@ -4,7 +4,7 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -88,12 +88,17 @@ function Get-TargetResource
     {
         $getValue = $null
 
-        #region resource generator code
-        $getValue = Get-MgBetaEntitlementManagementAccessPackageCatalog -AccessPackageCatalogId $id -ErrorAction SilentlyContinue
+        if (-not [System.String]::IsNullOrEmpty($id))
+        {
+            $getValue = Get-MgBetaEntitlementManagementAccessPackageCatalog -AccessPackageCatalogId $id -ErrorAction SilentlyContinue
+        }
 
         if ($null -eq $getValue)
         {
-            Write-Verbose -Message "Nothing with id {$id} was found"
+            if (-not [System.String]::IsNullOrEmpty($Id))
+            {
+                Write-Verbose -Message "Nothing with id {$id} was found"
+            }
 
             if (-Not [string]::IsNullOrEmpty($DisplayName))
             {
@@ -104,7 +109,6 @@ function Get-TargetResource
                 }
             }
         }
-        #endregion
 
         if ($null -eq $getValue)
         {
@@ -149,7 +153,7 @@ function Set-TargetResource
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -284,7 +288,7 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -356,10 +360,10 @@ function Test-TargetResource
     $CurrentValues = Get-TargetResource @PSBoundParameters
     $ValuesToCheck = ([Hashtable]$PSBoundParameters).clone()
 
-    if ($CurrentValues.Ensure -eq 'Absent')
+    if ($CurrentValues.Ensure -eq 'Absent' -and $Ensure -eq 'Absent')
     {
-        Write-Verbose -Message "Test-TargetResource returned $false"
-        return $false
+        Write-Verbose -Message "Test-TargetResource returned $true"
+        return $true
     }
     $testResult = $true
 

@@ -22,7 +22,7 @@ function Get-TargetResource
 
         [Parameter()]
         [ValidateSet('keyEncipherment','digitalSignature')]
-        [System.String]
+        [System.String[]]
         $KeyUsage,
 
         [Parameter()]
@@ -85,7 +85,7 @@ function Get-TargetResource
         [System.String]
         $DisplayName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -255,7 +255,7 @@ function Get-TargetResource
             CertificateStore                   = $enumCertificateStore
             HashAlgorithm                      = $enumHashAlgorithm
             KeySize                            = $enumKeySize
-            KeyUsage                           = $enumKeyUsage
+            KeyUsage                           = $enumKeyUsage.Split(',')
             ScepServerUrls                     = $getValue.AdditionalProperties.scepServerUrls
             SubjectAlternativeNameFormatString = $getValue.AdditionalProperties.subjectAlternativeNameFormatString
             SubjectNameFormatString            = $getValue.AdditionalProperties.subjectNameFormatString
@@ -332,7 +332,7 @@ function Set-TargetResource
 
         [Parameter()]
         [ValidateSet('keyEncipherment','digitalSignature')]
-        [System.String]
+        [System.String[]]
         $KeyUsage,
 
         [Parameter()]
@@ -395,7 +395,7 @@ function Set-TargetResource
         [System.String]
         $DisplayName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -460,6 +460,7 @@ function Set-TargetResource
         $CreateParameters = ([Hashtable]$BoundParameters).clone()
         $CreateParameters = Rename-M365DSCCimInstanceParameter -Properties $CreateParameters
         $CreateParameters.Remove('Id') | Out-Null
+        $CreateParameters['keyUsage'] = $CreateParameters['keyUsage'] -join ','
 
         $keys = (([Hashtable]$CreateParameters).clone()).Keys
         foreach ($key in $keys)
@@ -497,6 +498,7 @@ function Set-TargetResource
         $UpdateParameters = Rename-M365DSCCimInstanceParameter -Properties $UpdateParameters
 
         $UpdateParameters.Remove('Id') | Out-Null
+        $UpdateParameters['keyUsage'] = $UpdateParameters['keyUsage'] -join ','
 
         $keys = (([Hashtable]$UpdateParameters).clone()).Keys
         foreach ($key in $keys)
@@ -559,7 +561,7 @@ function Test-TargetResource
 
         [Parameter()]
         [ValidateSet('keyEncipherment','digitalSignature')]
-        [System.String]
+        [System.String[]]
         $KeyUsage,
 
         [Parameter()]
@@ -622,7 +624,7 @@ function Test-TargetResource
         [System.String]
         $DisplayName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -887,7 +889,8 @@ function Export-TargetResource
     }
     catch
     {
-        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*")
+        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*" -or `
+        $_.Exception -like "*Request not applicable to target tenant*")
         {
             Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) The current tenant is not registered for Intune."
         }

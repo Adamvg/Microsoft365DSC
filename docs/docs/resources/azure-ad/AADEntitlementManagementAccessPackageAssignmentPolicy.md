@@ -4,8 +4,8 @@
 
 | Parameter | Attribute | DataType | Description | Allowed Values |
 | --- | --- | --- | --- | --- |
-| **Id** | Key | String | Id of the access package assignment policy. | |
-| **DisplayName** | Required | String | The display name of the policy. | |
+| **DisplayName** | Key | String | The display name of the policy. | |
+| **Id** | Write | String | Id of the access package assignment policy. | |
 | **AccessPackageId** | Write | String | Identifier of the access package. | |
 | **AccessReviewSettings** | Write | MSFT_MicrosoftGraphassignmentreviewsettings | Who must review, and how often, the assignments to the access package from this policy. This property is null if reviews are not required. | |
 | **CanExtend** | Write | Boolean | Indicates whether a user can extend the access package assignment duration after approval. | |
@@ -136,48 +136,9 @@
 
 | Parameter | Attribute | DataType | Description | Allowed Values |
 | --- | --- | --- | --- | --- |
-| **CustomExtension** | Write | MSFT_MicrosoftGraphcustomaccesspackageworkflowextension | Indicates which custom workflow extension will be executed at this stage. | |
+| **CustomExtensionId** | Write | String | Indicates which custom workflow extension will be executed at this stage. | |
 | **Stage** | Write | String | Indicates the stage of the access package assignment request workflow when the access package custom extension runs. | `assignmentRequestCreated`, `assignmentRequestApproved`, `assignmentRequestGranted`, `assignmentRequestRemoved`, `assignmentFourteenDaysBeforeExpiration`, `assignmentOneDayBeforeExpiration`, `unknownFutureValue` |
 | **Id** | Write | String | Identifier of the stage. | |
-
-### MSFT_MicrosoftGraphcustomaccesspackageworkflowextension
-
-#### Parameters
-
-| Parameter | Attribute | DataType | Description | Allowed Values |
-| --- | --- | --- | --- | --- |
-| **AuthenticationConfiguration** | Write | MSFT_MicrosoftGraphcustomextensionauthenticationconfiguration | Configuration for securing the API call to the logic app. For example, using OAuth client credentials flow. | |
-| **ClientConfiguration** | Write | MSFT_MicrosoftGraphcustomextensionclientconfiguration | HTTP connection settings that define how long Azure AD can wait for a connection to a logic app, how many times you can retry a timed-out connection and the exception scenarios when retries are allowed. | |
-| **Description** | Write | String | Description for the customAccessPackageWorkflowExtension object. | |
-| **DisplayName** | Write | String | Display name for the customAccessPackageWorkflowExtension object. | |
-| **EndpointConfiguration** | Write | MSFT_MicrosoftGraphcustomextensionendpointconfiguration | The type and details for configuring the endpoint to call the logic app's workflow. | |
-| **Id** | Write | String | Identifier for the customAccessPackageWorkflowExtension object. | |
-
-### MSFT_MicrosoftGraphcustomextensionauthenticationconfiguration
-
-#### Parameters
-
-| Parameter | Attribute | DataType | Description | Allowed Values |
-| --- | --- | --- | --- | --- |
-| **ResourceId** | Write | String | The appID of the Azure AD application to use to authenticate a logic app with a custom access package workflow extension. | |
-
-### MSFT_MicrosoftGraphcustomextensionclientconfiguration
-
-#### Parameters
-
-| Parameter | Attribute | DataType | Description | Allowed Values |
-| --- | --- | --- | --- | --- |
-| **TimeoutInMilliseconds** | Write | UInt32 | The max duration in milliseconds that Azure AD will wait for a response from the logic app before it shuts down the connection. The valid range is between 200 and 2000 milliseconds. Default duration is 1000. | |
-
-### MSFT_MicrosoftGraphcustomextensionendpointconfiguration
-
-#### Parameters
-
-| Parameter | Attribute | DataType | Description | Allowed Values |
-| --- | --- | --- | --- | --- |
-| **LogicAppWorkflowName** | Write | MSFT_MicrosoftGraphcustomextensionauthenticationconfiguration | The name of the logic app. | |
-| **ResourceGroupName** | Write | MSFT_MicrosoftGraphcustomextensionclientconfiguration | The Azure resource group name for the logic app. | |
-| **SubscriptionId** | Write | String | Identifier of the Azure subscription for the logic app. | |
 
 
 ## Description
@@ -223,15 +184,15 @@ Configuration Example
     param(
         [Parameter(Mandatory = $true)]
         [PSCredential]
-        $credsGlobalAdmin
+        $Credscredential
     )
     Import-DscResource -ModuleName Microsoft365DSC
 
     node localhost
     {
-        AADEntitlementManagementAccessPackageAssignmentPolicy "myAssignmentPolicyWithAccessReviewsSettings"
+        AADEntitlementManagementAccessPackageAssignmentPolicy "myAssignments"
         {
-            AccessPackageId         = "5d05114c-b4d9-4ae7-bda6-4bade48e60f2";
+            AccessPackageId         = "Integration Package";
             AccessReviewSettings    = MSFT_MicrosoftGraphassignmentreviewsettings{
                 IsEnabled = $True
                 StartDateTime = '12/17/2022 23:59:59'
@@ -247,26 +208,14 @@ Configuration Example
             Description             = "";
             DisplayName             = "External tenant";
             DurationInDays          = 365;
-            Id                      = "0ae0bc7c-bae7-4e3b-9ed3-216b767efbb3";
             RequestApprovalSettings = MSFT_MicrosoftGraphapprovalsettings{
                 ApprovalMode = 'NoApproval'
                 IsRequestorJustificationRequired = $False
                 IsApprovalRequired = $False
                 IsApprovalRequiredForExtension = $False
             };
-            RequestorSettings       = MSFT_MicrosoftGraphrequestorsettings{
-                AllowedRequestors = @(
-                    MSFT_MicrosoftGraphuserset{
-                        IsBackup = $False
-                        Id = 'e27eb9b9-27c3-462d-8d65-3bcd763b0ed0'
-                        odataType = '#microsoft.graph.connectedOrganizationMembers'
-                    }
-                )
-                AcceptRequests = $True
-                ScopeType = 'SpecificConnectedOrganizationSubjects'
-            };
             Ensure                     = "Present"
-            Credential                 = $credsGlobalAdmin
+            Credential                 = $Credscredential
         }
     }
 }
@@ -283,99 +232,65 @@ Configuration Example
     param(
         [Parameter(Mandatory = $true)]
         [PSCredential]
-        $credsGlobalAdmin
+        $Credscredential
     )
     Import-DscResource -ModuleName Microsoft365DSC
 
     node localhost
     {
-        AADEntitlementManagementAccessPackageAssignmentPolicy "MyAssignmentPolicyWithQuestionsAndCulture"
+        AADEntitlementManagementAccessPackageAssignmentPolicy "myAssignments"
         {
-            AccessPackageId         = "5d05114c-b4d9-4ae7-bda6-4bade48e60f2";
+            AccessPackageId         = "Integration Package";
+            AccessReviewSettings    = MSFT_MicrosoftGraphassignmentreviewsettings{
+                IsEnabled = $True
+                StartDateTime = '12/17/2022 23:59:59'
+                IsAccessRecommendationEnabled = $True
+                AccessReviewTimeoutBehavior = 'keepAccess'
+                IsApprovalJustificationRequired = $True
+                ReviewerType = 'Self'
+                RecurrenceType = 'quarterly'
+                Reviewers = @()
+                DurationInDays = 25
+            };
             CanExtend               = $False;
-            Credential              = $credsGlobalAdmin
-            Description             = "Initial Policy";
-            DisplayName             = "Initial Policy";
-            DurationInDays          = 365;
-            Ensure                  = "Present";
-            Id                      = "d46bda47-ec8e-4b62-8d94-3cd13e267a61";
-            Questions               = @(
-                MSFT_MicrosoftGraphaccesspackagequestion{
-                    AllowsMultipleSelection = $False
-                    Id = '8475d987-535d-43a1-a7d7-96b7fd0edda9'
-                    QuestionText = MSFT_MicrosoftGraphaccesspackagelocalizedcontent{
-                        LocalizedTexts = @(
-                            MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                Text = 'My Question'
-                                LanguageCode = 'en-GB'
-                            }
-
-                            MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                Text = 'Ma question'
-                                LanguageCode = 'fr-FR'
-                            }
-                        )
-                        DefaultText = 'My question'
-                    }
-                    IsRequired = $True
-                    Choices = @(
-                        MSFT_MicrosoftGraphaccessPackageAnswerChoice{
-                            displayValue = MSFT_MicrosoftGraphaccessPackageLocalizedContent{
-                                localizedTexts = @(
-                                    MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                        text = 'Yes'
-                                        languageCode = 'en-GB'
-                                    }
-
-                                    MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                        text = 'Oui'
-                                        languageCode = 'fr-FR'
-                                    }
-									MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                        text = 'Ya'
-                                        languageCode = 'de'
-                                    }
-                                )
-                                defaultText = 'Yes'
-                            }
-                            actualValue = 'Yes'
-                        }
-
-                        MSFT_MicrosoftGraphaccessPackageAnswerChoice{
-                            displayValue = MSFT_MicrosoftGraphaccessPackageLocalizedContent{
-                                localizedTexts = @(
-                                    MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                        text = 'No'
-                                        languageCode = 'en-GB'
-                                    }
-                                    MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                        text = 'Non'
-                                        languageCode = 'fr-FR'
-                                    }
-									MSFT_MicrosoftGraphaccessPackageLocalizedText{
-                                        text = 'Nein'
-                                        languageCode = 'de'
-                                    }
-                                )
-                                defaultText = 'No'
-                            }
-                            actualValue = 'No'
-                        }
-                    )
-                    Sequence = 0
-                    odataType = '#microsoft.graph.accessPackageMultipleChoiceQuestion'
-                }
-            );
+            Description             = "";
+            DisplayName             = "External tenant";
+            DurationInDays          = 180; # Updated Property
             RequestApprovalSettings = MSFT_MicrosoftGraphapprovalsettings{
                 ApprovalMode = 'NoApproval'
                 IsRequestorJustificationRequired = $False
                 IsApprovalRequired = $False
                 IsApprovalRequiredForExtension = $False
             };
-            RequestorSettings       = MSFT_MicrosoftGraphrequestorsettings{
-                AcceptRequests = $False
-                ScopeType = 'NoSubjects'
-            };
+            Ensure                     = "Present"
+            Credential                 = $Credscredential
+        }
+    }
+}
+```
+
+### Example 3
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        AADEntitlementManagementAccessPackageAssignmentPolicy "myAssignmentPolicyWithAccessReviewsSettings"
+        {
+            DisplayName                = "External tenant";
+            Ensure                     = "Absent"
+            Credential                 = $Credscredential
         }
     }
 }

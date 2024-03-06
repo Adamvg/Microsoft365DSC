@@ -98,6 +98,14 @@ function Get-TargetResource
 
         [Parameter()]
         [System.Boolean]
+        $RequireClass3Biometrics,
+
+        [Parameter()]
+        [System.Boolean]
+        $RequirePinAfterBiometricChange,
+
+        [Parameter()]
+        [System.Boolean]
         $FingerprintBlocked,
 
         [Parameter()]
@@ -238,8 +246,9 @@ function Get-TargetResource
         if ($null -eq $policyInfo)
         {
             Write-Verbose -Message "Searching for Policy using DisplayName {$DisplayName}"
-            $policyInfo = Get-MgBetaDeviceAppManagementAndroidManagedAppProtection -Filter "displayName eq '$DisplayName'" -ExpandProperty Apps, assignments `
-                -ErrorAction Stop
+            $policyInfoArray = Get-MgBetaDeviceAppManagementAndroidManagedAppProtection -ExpandProperty Apps, assignments `
+                -ErrorAction Stop -All:$true
+            $policyInfo = $policyInfoArray | Where-Object -FilterScript {$_.displayName -eq $DisplayName}
         }
         if ($null -eq $policyInfo)
         {
@@ -448,6 +457,14 @@ function Set-TargetResource
 
         [Parameter()]
         [System.Boolean]
+        $RequireClass3Biometrics,
+
+        [Parameter()]
+        [System.Boolean]
+        $RequirePinAfterBiometricChange,
+
+        [Parameter()]
+        [System.Boolean]
         $FingerprintBlocked,
 
         [Parameter()]
@@ -611,10 +628,6 @@ function Set-TargetResource
                     $configstring += ($param + ':' + $setParams.$param + "`r`n")
                 }
             }
-        }
-        else
-        {
-            #write-host 'value' $param 'not specified'
         }
     }
 
@@ -789,6 +802,14 @@ function Test-TargetResource
         [Parameter()]
         [System.Boolean]
         $PrintBlocked,
+
+        [Parameter()]
+        [System.Boolean]
+        $RequireClass3Biometrics,
+
+        [Parameter()]
+        [System.Boolean]
+        $RequirePinAfterBiometricChange,
 
         [Parameter()]
         [System.Boolean]
@@ -968,29 +989,22 @@ function Test-TargetResource
             Write-Verbose -Message ('Unspecified Parameter in Config: ' + $param + '  Current Value Will be retained: ' + $CurrentValues.$param)
         }
     }
-
+    Write-Verbose -Message "Starting Assignments Check"
     # handle complex parameters - manually for now
     if ($PSBoundParameters.keys -contains 'Assignments' )
     {
         $targetvalues.add('Assignments', $psboundparameters.Assignments)
     }
-    else
-    {
-        Write-Verbose -Message 'Unspecified Parameter in Config: Assignments - Current Value is:' $CurrentValues.Assignments `
-            "`r`nNOTE: Assignments interacts with other values - not specifying may lead to unexpected output"
-    }
 
+    Write-Verbose -Message "Starting Exluded Groups Check"
     if ($PSBoundParameters.keys -contains 'ExcludedGroups' )
     {
         $targetvalues.add('ExcludedGroups', $psboundparameters.ExcludedGroups)
     }
-    else
-    {
-        Write-Verbose -Message 'Unspecified Parameter in Config: ExcludedGroups - Current Value is:' $CurrentValues.ExcludedGroups `
-            "`r`nNOTE: ExcludedGroups interacts with other values - not specifying may lead to unexpected output"
-    }
 
     # set the apps values
+    Write-Verbose -Message "AppGroupType: $AppGroupType"
+    Write-Verbose -Message "apps: $apps"
     $AppsHash = set-AppsHash -AppGroupType $AppGroupType -apps $apps
     $targetvalues.add('Apps', $AppsHash.Apps)
     $targetvalues.add('AppGroupType', $AppsHash.AppGroupType)
@@ -1111,7 +1125,8 @@ function Export-TargetResource
     }
     catch
     {
-        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*")
+        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*" -or `
+        $_.Exception -like "*Request not applicable to target tenant*")
         {
             Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) The current tenant is not registered for Intune."
         }
@@ -1261,12 +1276,8 @@ function Set-ManagedBrowserValues
     # edge - edge, true, empty id strings
     # any app - not configured, false, empty strings
     # unmanaged browser not configured, true, strings must not be empty
-
-    Write-Host 'Setting Managed Browser Properties'
-
     if (!$ManagedBrowserToOpenLinksRequired)
     {
-        Write-Host 'Setting Managed Browser to Any App'
         $ManagedBrowser = 'notConfigured'
         $ManagedBrowserToOpenLinksRequired = $false
         $CustomBrowserDisplayName = ''
@@ -1277,7 +1288,6 @@ function Set-ManagedBrowserValues
     {
         if (($CustomBrowserDisplayName -ne '') -and ($CustomBrowserPackageId -ne ''))
         {
-            Write-Host 'Setting Managed Browser to Custom Browser'
             $ManagedBrowser = 'notConfigured'
             $ManagedBrowserToOpenLinksRequired = $true
             $CustomBrowserDisplayName = $CustomBrowserDisplayName
@@ -1285,7 +1295,6 @@ function Set-ManagedBrowserValues
         }
         else
         {
-            Write-Host 'Setting Managed Browser to Microsoft Edge'
             $ManagedBrowser = 'microsoftEdge'
             $ManagedBrowserToOpenLinksRequired = $true
             $CustomBrowserDisplayName = ''
@@ -1352,6 +1361,8 @@ function Get-InputParameters
         PinCharacterSet                                 = @{Type = 'Parameter'        ; ExportFileType = 'String'; }
         PinRequired                                     = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }
         PrintBlocked                                    = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }
+        RequireClass3Biometrics                         = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }
+        RequirePinAfterBiometricChange                  = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }
         SaveAsBlocked                                   = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }
         ScreenCaptureBlocked                            = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }
         SimplePinBlocked                                = @{Type = 'Parameter'        ; ExportFileType = 'NA'; }

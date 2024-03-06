@@ -51,12 +51,28 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
             Mock -CommandName New-M365DSCConnection -MockWith {
                 return 'Credentials'
             }
+            Mock -CommandName Invoke-MgGraphRequest -MockWith {
+                return @{}
+            }
 
             # Mock Write-Host to hide output during the tests
             Mock -CommandName Write-Host -MockWith {
             }
 
-            Mock -CommandName Write-Host -MockWith {
+            Mock -CommandName Get-MgUser -MockWith {
+                return @{
+                    Id = '12345678-1234-1234-1234-123456789012'
+                    UserPrincipalName = 'John.smith@contoso.com'
+                }
+            }
+            
+            Mock -CommandName Get-MgBetaDirectoryObject -MockWith {
+                return @{
+                    Id                   = '12345678-1234-1234-1234-123456789012'
+                    AdditionalProperties = @{
+                        '@odata.type' = '#microsoft.graph.user'
+                    }
+                }
             }
         }
         # Test contexts
@@ -89,14 +105,6 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                 }
                 Mock -CommandName Get-MgBetaEntitlementManagementConnectedOrganizationInternalSponsor -MockWith {
                     return @()
-                }
-                Mock -CommandName Get-MgBetaDirectoryObject -MockWith {
-                    return @{
-                        Id                   = '12345678-1234-1234-1234-123456789012'
-                        AdditionalProperties = @{
-                            '@odata.type' = '#microsoft.graph.user'
-                        }
-                    }
                 }
                 Mock -CommandName New-MgBetaEntitlementManagementConnectedOrganization -MockWith {
                     return @{
@@ -190,7 +198,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                 $testParams = @{
                     Description      = 'ConnectedOrganization_Description'
                     DisplayName      = 'ConnectedOrganization_DisplayName'
-                    ExternalSponsors = @('12345678-1234-1234-1234-123456789012')
+                    ExternalSponsors = @('John.Smith@contoso.com')
                     Id               = '12345678-1234-1234-1234-123456789012'
                     IdentitySources  = @(
                         (New-CimInstance -ClassName MSFT_AADEntitlementManagementConnectedOrganizationIdentitySource -Property @{
@@ -199,7 +207,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             displayName      = 'IdentitySource_DisplayName'
                         } -ClientOnly)
                     )
-                    InternalSponsors = @('12345678-1234-1234-1234-123456789012')
+                    InternalSponsors = @('John.Smith@contoso.com')
                     State            = 'configured'
                     Ensure           = 'Present'
                     Credential       = $Credential
@@ -247,7 +255,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                 $testParams = @{
                     Description      = 'ConnectedOrganization_Description'
                     DisplayName      = 'ConnectedOrganization_DisplayName'
-                    ExternalSponsors = @('12345678-1234-1234-1234-123456789012')
+                    ExternalSponsors = @('John.Smith@contoso.com')
                     Id               = '12345678-1234-1234-1234-123456789012'
                     IdentitySources  = @(
                         (New-CimInstance -ClassName MSFT_AADEntitlementManagementConnectedOrganizationIdentitySource -Property @{
@@ -256,7 +264,7 @@ Describe -Name $Global:DscHelper.DescribeHeader -Fixture {
                             displayName      = 'IdentitySource_DisplayName'
                         } -ClientOnly)
                     )
-                    InternalSponsors = @('12345678-1234-1234-1234-123456789012')
+                    InternalSponsors = @('John.Smith@contoso.com')
                     State            = 'configured'
 
                     Ensure           = 'Present'

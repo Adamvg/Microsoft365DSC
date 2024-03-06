@@ -4,13 +4,13 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
         [Parameter(Mandatory = $true)]
         [System.String]
-        $Displayname,
+        $DisplayName,
 
         [Parameter()]
         [System.String]
@@ -165,7 +165,7 @@ function Get-TargetResource
         $EligibleAssignmentAssigneeNotificationOnlyCritical,
 
         [Parameter()]
-        [ValidateSet('Present', 'Absent')]
+        [ValidateSet('Present')]
         [System.String]
         $Ensure = 'Present',
 
@@ -194,7 +194,7 @@ function Get-TargetResource
         $ManagedIdentity
     )
 
-    Write-Verbose -Message "Getting configuration of Role: $Displayname"
+    Write-Verbose -Message "Getting configuration of Role: $DisplayName"
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftGraph' `
         -InboundParameters $PSBoundParameters
 
@@ -213,7 +213,29 @@ function Get-TargetResource
     #endregion
 
     $nullReturn = $PSBoundParameters
-    $nullReturn.Ensure = 'Absent'
+
+    $RoleDefintion = $null
+    if ($null -ne $Script:exportedInstances -and $Script:ExportMode)
+    {
+        $RoleDefinition = $Script:exportedInstances | Where-Object -FilterScript {$_.Id -eq $Id}
+    }
+    elseif (-not [System.String]::IsNullOrEmpty($Id))
+    {
+        $RoleDefinition = Get-MgBetaRoleManagementDirectoryRoleDefinition -UnifiedRoleDefinitionId $Id `
+            -ErrorAction SilentlyContinue
+    }
+
+    if ($null -eq $RoleDefinition -and -not [System.String]::IsNullOrEmpty($DisplayName))
+    {
+        if ($null -ne $Script:exportedInstances -and $Script:ExportMode)
+        {
+            $RoleDefinition = $Script:exportedInstances | Where-Object -FilterScript {$_.DisplayName -eq $DisplayName}
+        }
+        else
+        {
+            $RoleDefinition = Get-MgBetaRoleManagementDirectoryRoleDefinition -Filter "displayName eq '$DisplayName'"
+        }
+    }
 
     try
     {
@@ -222,7 +244,8 @@ function Get-TargetResource
             $allFilter = "scopeId eq '/' and scopeType eq 'DirectoryRole'"
             $Script:PolicyAssignments = Get-MgBetaPolicyRoleManagementPolicyAssignment -Filter $allFilter -All
         }
-        $Policy = $Script:PolicyAssignments | Where-Object -FilterScript {$_.RoleDefinitionId -eq $Id}
+
+        $Policy = $Script:PolicyAssignments | Where-Object -FilterScript {$_.RoleDefinitionId -eq $RoleDefinition.Id}
     }
     catch
     {
@@ -236,26 +259,6 @@ function Get-TargetResource
     if ($null -eq $Policy)
     {
         return $nullReturn
-    }
-    if ($null -ne $Script:exportedInstances -and $Script:ExportMode)
-    {
-        $RoleDefinition = $Script:exportedInstances | Where-Object -FilterScript {$_.Id -eq $Id}
-    }
-    else
-    {
-        $RoleDefinition = Get-MgBetaRoleManagementDirectoryRoleDefinition -UnifiedRoleDefinitionId $Id
-    }
-
-    if ($null -eq $RoleDefinition -and -not [System.String]::IsNullOrEmpty($Displayname))
-    {
-        if ($null -ne $Script:exportedInstances -and $Script:ExportMode)
-        {
-            $RoleDefinition = $Script:exportedInstances | Where-Object -FilterScript {$_.DisplayName -eq $Displayname}
-        }
-        else
-        {
-            $RoleDefinition = Get-MgBetaRoleManagementDirectoryRoleDefinition -Filter "DisplayName eq '$DisplayName'"
-        }
     }
 
     #get Policyrule
@@ -324,7 +327,7 @@ function Get-TargetResource
 
     try
     {
-        Write-Verbose -Message "Found configuration of Rule $($Displayname)"
+        Write-Verbose -Message "Found configuration of Rule $($DisplayName)"
         $result = @{
             Id                                                        = $Id
             DisplayName                                               = $DisplayName
@@ -370,6 +373,7 @@ function Get-TargetResource
             ApplicationId                                             = $ApplicationId
             TenantId                                                  = $TenantId
             CertificateThumbprint                                     = $CertificateThumbprint
+            ApplicationSecret                                         = $ApplicationSecret
             Credential                                                = $Credential
             ManagedIdentity                                           = $ManagedIdentity.IsPresent
         }
@@ -393,13 +397,13 @@ function Set-TargetResource
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
         [Parameter(Mandatory = $true)]
         [System.String]
-        $Displayname,
+        $DisplayName,
 
         [Parameter()]
         [System.String]
@@ -554,7 +558,7 @@ function Set-TargetResource
         $EligibleAssignmentAssigneeNotificationOnlyCritical,
 
         [Parameter()]
-        [ValidateSet('Present', 'Absent')]
+        [ValidateSet('Present')]
         [System.String]
         $Ensure = 'Present',
 
@@ -583,7 +587,7 @@ function Set-TargetResource
         $ManagedIdentity
     )
 
-    Write-Verbose -Message "Setting configuration of Role settings: $Displayname"
+    Write-Verbose -Message "Setting configuration of Role settings: $DisplayName"
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -598,11 +602,23 @@ function Set-TargetResource
     #endregion
 
     #get role
-    [string]$Filter = $null
-    $Filter = "scopeId eq '/' and scopeType eq 'DirectoryRole' and RoleDefinitionId eq '" + $Id + "'"
-    $Policy = Get-MgBetaPolicyRoleManagementPolicyAssignment -Filter $Filter
+    $RoleDefinition = Get-MgBetaRoleManagementDirectoryRoleDefinition -Filter "displayName eq '$DisplayName'"
+
+    $Policy = $null
+    if (-not [System.String]::IsNullOrEmpty($Id))
+    {
+        $Filter = "scopeId eq '/' and scopeType eq 'DirectoryRole' and RoleDefinitionId eq '" + $Id + "'"
+        $Policy = Get-MgBetaPolicyRoleManagementPolicyAssignment -Filter $Filter
+    }
+    else
+    {
+        Write-Verbose -Message "Finding Policy Assignment by Role Definition Id {$($RoleDefinition.Id)}"
+        $Filter = "scopeId eq '/' and scopeType eq 'DirectoryRole' and RoleDefinitionId eq '$($RoleDefinition.Id)'"
+        $Policy = Get-MgBetaPolicyRoleManagementPolicyAssignment -Filter $Filter
+    }
     #get Policyrule
-    $roles = Get-MgBetaPolicyRoleManagementPolicyRule -UnifiedRoleManagementPolicyId $Policy.Policyid
+    $roles = Get-MgBetaPolicyRoleManagementPolicyRule -UnifiedRoleManagementPolicyId $Policy.PolicyId `
+        -ErrorAction SilentlyContinue
 
     foreach ($role in $roles)
     {
@@ -927,7 +943,7 @@ function Set-TargetResource
                         else
                         {
                             #try with group
-                            $Filter = "Displayname eq '" + $item + "'"
+                            $Filter = "displayName eq '" + $item + "'"
                             try
                             {
                                 $group = Get-MgGroup -Filter $Filter -ErrorAction Stop
@@ -1093,13 +1109,13 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
         [Parameter(Mandatory = $true)]
         [System.String]
-        $Displayname,
+        $DisplayName,
 
         [Parameter()]
         [System.String]
@@ -1254,7 +1270,7 @@ function Test-TargetResource
         $EligibleAssignmentAssigneeNotificationOnlyCritical,
 
         [Parameter()]
-        [ValidateSet('Present', 'Absent')]
+        [ValidateSet('Present')]
         [System.String]
         $Ensure = 'Present',
 
@@ -1282,6 +1298,7 @@ function Test-TargetResource
         [Switch]
         $ManagedIdentity
     )
+    $Script:ExportMode = $false
 
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -1295,18 +1312,14 @@ function Test-TargetResource
     Add-M365DSCTelemetryEvent -Data $data
     #endregion
 
-    Write-Verbose -Message "Testing configuration of Role Assignment: $Displayname"
+    Write-Verbose -Message "Testing configuration of Role Assignment: $DisplayName"
 
     $CurrentValues = Get-TargetResource @PSBoundParameters
 
+    Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
     Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $PSBoundParameters)"
 
     $ValuesToCheck = $PSBoundParameters
-    $ValuesToCheck.Remove('ApplicationId') | Out-Null
-    $ValuesToCheck.Remove('TenantId') | Out-Null
-    $ValuesToCheck.Remove('ApplicationSecret') | Out-Null
-    $ValuesToCheck.Remove('Id') | Out-Null
-    $ValuesToCheck.Remove('ManagedIdentity') | Out-Null
 
     $TestResult = Test-M365DSCParameterState -CurrentValues $CurrentValues `
         -Source $($MyInvocation.MyCommand.Source) `
@@ -1383,7 +1396,7 @@ function Export-TargetResource
     try
     {
         $Script:ExportMode = $true
-        [array] $Script:exportedInstances = Get-MgBetaRoleManagementDirectoryRoleDefinition -ErrorAction Stop
+        [array] $Script:exportedInstances = Get-MgBetaRoleManagementDirectoryRoleDefinition -Filter $Filter -Sort DisplayName -ErrorAction Stop
         $i = 1
         $dscContent = ''
         Write-Host "`r`n" -NoNewline

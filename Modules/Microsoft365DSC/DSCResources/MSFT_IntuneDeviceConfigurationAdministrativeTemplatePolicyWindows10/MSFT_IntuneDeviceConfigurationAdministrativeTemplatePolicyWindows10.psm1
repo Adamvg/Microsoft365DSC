@@ -18,7 +18,7 @@ function Get-TargetResource
         [System.String]
         $PolicyConfigurationIngestionType,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -196,7 +196,7 @@ function Get-TargetResource
                     }
                     '*.groupPolicyPresentationValueMultiText'
                     {
-                        $complexPresentationValue.Add('StringValue', $presentationValue.AdditionalProperties.values)
+                        $complexPresentationValue.Add('StringValues', $presentationValue.AdditionalProperties.values)
                     }
                     '*.groupPolicyPresentationValueText'
                     {
@@ -241,7 +241,7 @@ function Get-TargetResource
         }
         $results.Add('Assignments', $assignmentResult)
 
-        return [System.Collections.Hashtable] $results
+        return $results
     }
     catch
     {
@@ -284,7 +284,7 @@ function Set-TargetResource
         [System.String]
         $PolicyConfigurationIngestionType,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -608,7 +608,7 @@ function Test-TargetResource
         [System.String]
         $PolicyConfigurationIngestionType,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -913,6 +913,7 @@ function Export-TargetResource
             $currentDSCBlock = $currentDSCBlock.replace( "    ,`r`n" , "    `r`n" )
             $currentDSCBlock = $currentDSCBlock.replace( "`r`n;`r`n" , "`r`n" )
             $currentDSCBlock = $currentDSCBlock.replace( "`r`n,`r`n" , "`r`n" )
+            $currentDSCBlock = $currentDSCBlock.Replace("}                    Enabled = `$","}`r`n                    Enabled = `$")
 
             $dscContent += $currentDSCBlock
             Save-M365DSCPartialExport -Content $currentDSCBlock `
@@ -925,7 +926,8 @@ function Export-TargetResource
     catch
     {
         if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*" -or `
-                $_.Exception -like "*Unable to perform redirect as Location Header is not set in response*")
+                $_.Exception -like "*Unable to perform redirect as Location Header is not set in response*" -or `
+                $_.Exception -like "*Request not applicable to target tenant*")
         {
             Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) The current tenant is not registered for Intune."
         }

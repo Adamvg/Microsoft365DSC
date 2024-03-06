@@ -19,9 +19,9 @@
 | **UseSecurityKeyForSignin** | Write | Boolean | Boolean value used to enable the Windows Hello security key as a logon credential. | |
 | **WindowsHelloForBusinessBlocked** | Write | Boolean | Boolean value that blocks Windows Hello for Business as a method for signing into Windows. | |
 | **Description** | Write | String | Admin provided description of the Device Configuration. | |
-| **DisplayName** | Required | String | Admin provided name of the device configuration. | |
+| **DisplayName** | Key | String | Admin provided name of the device configuration. | |
 | **SupportsScopeTags** | Write | Boolean | Indicates whether or not the underlying Device Configuration supports the assignment of scope tags. Assigning to the ScopeTags property is not allowed when this value is false and entities will not be visible to scoped users. This occurs for Legacy policies created in Silverlight and can be resolved by deleting and recreating the policy in the Azure Portal. This property is read-only. | |
-| **Id** | Key | String | The unique identifier for an entity. Read-only. | |
+| **Id** | Write | String | The unique identifier for an entity. Read-only. | |
 | **Assignments** | Write | MSFT_DeviceManagementConfigurationPolicyAssignments[] | Represents the assignment to the Intune policy. | |
 | **Ensure** | Write | String | Present ensures the policy exists, absent ensures it is removed. | `Present`, `Absent` |
 | **Credential** | Write | PSCredential | Credentials of the Admin | |
@@ -41,6 +41,7 @@
 | **deviceAndAppManagementAssignmentFilterType** | Write | String | The type of filter of the target assignment i.e. Exclude or Include. Possible values are:none, include, exclude. | `none`, `include`, `exclude` |
 | **deviceAndAppManagementAssignmentFilterId** | Write | String | The Id of the filter for the target assignment. | |
 | **groupId** | Write | String | The group Id that is the target of the assignment. | |
+| **groupDisplayName** | Write | String | The group Display Name that is the target of the assignment. | |
 | **collectionId** | Write | String | The collection Id that is the target of the assignment.(ConfigMgr) | |
 
 
@@ -105,7 +106,6 @@ Configuration Example
             DisplayName                                  = "identity protection";
             EnhancedAntiSpoofingForFacialFeaturesEnabled = $True;
             Ensure                                       = "Present";
-            Id                                           = "e0f7e513-6b34-4a74-8d90-fe7648c0ce30";
             PinExpirationInDays                          = 5;
             PinLowercaseCharactersUsage                  = "allowed";
             PinMaximumLength                             = 4;
@@ -120,6 +120,81 @@ Configuration Example
             UseCertificatesForOnPremisesAuthEnabled      = $True;
             UseSecurityKeyForSignin                      = $True;
             WindowsHelloForBusinessBlocked               = $False;
+        }
+    }
+}
+```
+
+### Example 2
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        IntuneDeviceConfigurationIdentityProtectionPolicyWindows10 'Example'
+        {
+            Assignments                                  = @(
+                MSFT_DeviceManagementConfigurationPolicyAssignments{
+                    deviceAndAppManagementAssignmentFilterType = 'none'
+                    dataType = '#microsoft.graph.allLicensedUsersAssignmentTarget'
+                }
+            );
+            Credential                                   = $Credscredential;
+            DisplayName                                  = "identity protection";
+            EnhancedAntiSpoofingForFacialFeaturesEnabled = $True;
+            Ensure                                       = "Present";
+            PinExpirationInDays                          = 5;
+            PinLowercaseCharactersUsage                  = "allowed";
+            PinMaximumLength                             = 4;
+            PinMinimumLength                             = 4;
+            PinPreviousBlockCount                        = 4; # Updated Property
+            PinRecoveryEnabled                           = $True;
+            PinSpecialCharactersUsage                    = "allowed";
+            PinUppercaseCharactersUsage                  = "allowed";
+            SecurityDeviceRequired                       = $True;
+            SupportsScopeTags                            = $True;
+            UnlockWithBiometricsEnabled                  = $True;
+            UseCertificatesForOnPremisesAuthEnabled      = $True;
+            UseSecurityKeyForSignin                      = $True;
+            WindowsHelloForBusinessBlocked               = $False;
+        }
+    }
+}
+```
+
+### Example 3
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        IntuneDeviceConfigurationIdentityProtectionPolicyWindows10 'Example'
+        {
+            Credential                                   = $Credscredential;
+            DisplayName                                  = "identity protection";
+            Ensure                                       = "Absent";
         }
     }
 }

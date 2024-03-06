@@ -982,7 +982,7 @@ function Get-TargetResource
         [System.Boolean]
         $SupportsScopeTags,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -1287,36 +1287,36 @@ function Get-TargetResource
         foreach ($currentfirewallRules in $getValue.AdditionalProperties.firewallRules)
         {
             $myfirewallRules = @{}
-            if ($null -ne $getValue.AdditionalProperties.firewallRules.action)
+            if ($null -ne $currentfirewallRules.action)
             {
-                $myfirewallRules.Add('Action', $getValue.AdditionalProperties.firewallRules.action.toString())
+                $myfirewallRules.Add('Action', $currentfirewallRules.action.toString())
             }
-            $myfirewallRules.Add('Description', $getValue.AdditionalProperties.firewallRules.description)
-            $myfirewallRules.Add('DisplayName', $getValue.AdditionalProperties.firewallRules.displayName)
-            if ($null -ne $getValue.AdditionalProperties.firewallRules.edgeTraversal)
+            $myfirewallRules.Add('Description', $currentfirewallRules.description)
+            $myfirewallRules.Add('DisplayName', $currentfirewallRules.displayName)
+            if ($null -ne $currentfirewallRules.edgeTraversal)
             {
-                $myfirewallRules.Add('EdgeTraversal', $getValue.AdditionalProperties.firewallRules.edgeTraversal.toString())
+                $myfirewallRules.Add('EdgeTraversal', $currentfirewallRules.edgeTraversal.toString())
             }
-            $myfirewallRules.Add('FilePath', $getValue.AdditionalProperties.firewallRules.filePath)
-            if ($null -ne $getValue.AdditionalProperties.firewallRules.interfaceTypes)
+            $myfirewallRules.Add('FilePath', $currentfirewallRules.filePath)
+            if ($null -ne $currentfirewallRules.interfaceTypes)
             {
-                $myfirewallRules.Add('InterfaceTypes', $getValue.AdditionalProperties.firewallRules.interfaceTypes.toString())
+                $myfirewallRules.Add('InterfaceTypes', $currentfirewallRules.interfaceTypes.toString())
             }
-            $myfirewallRules.Add('LocalAddressRanges', $getValue.AdditionalProperties.firewallRules.localAddressRanges)
-            $myfirewallRules.Add('LocalPortRanges', $getValue.AdditionalProperties.firewallRules.localPortRanges)
-            $myfirewallRules.Add('LocalUserAuthorizations', $getValue.AdditionalProperties.firewallRules.localUserAuthorizations)
-            $myfirewallRules.Add('PackageFamilyName', $getValue.AdditionalProperties.firewallRules.packageFamilyName)
-            if ($null -ne $getValue.AdditionalProperties.firewallRules.profileTypes)
+            $myfirewallRules.Add('LocalAddressRanges', $currentfirewallRules.localAddressRanges)
+            $myfirewallRules.Add('LocalPortRanges', $currentfirewallRules.localPortRanges)
+            $myfirewallRules.Add('LocalUserAuthorizations', $currentfirewallRules.localUserAuthorizations)
+            $myfirewallRules.Add('PackageFamilyName', $currentfirewallRules.packageFamilyName)
+            if ($null -ne $currentfirewallRules.profileTypes)
             {
-                $myfirewallRules.Add('ProfileTypes', $getValue.AdditionalProperties.firewallRules.profileTypes.toString())
+                $myfirewallRules.Add('ProfileTypes', $currentfirewallRules.profileTypes.toString())
             }
-            $myfirewallRules.Add('Protocol', $getValue.AdditionalProperties.firewallRules.protocol)
-            $myfirewallRules.Add('RemoteAddressRanges', $getValue.AdditionalProperties.firewallRules.remoteAddressRanges)
-            $myfirewallRules.Add('RemotePortRanges', $getValue.AdditionalProperties.firewallRules.remotePortRanges)
-            $myfirewallRules.Add('ServiceName', $getValue.AdditionalProperties.firewallRules.serviceName)
-            if ($null -ne $getValue.AdditionalProperties.firewallRules.trafficDirection)
+            $myfirewallRules.Add('Protocol', $currentfirewallRules.protocol)
+            $myfirewallRules.Add('RemoteAddressRanges', $currentfirewallRules.remoteAddressRanges)
+            $myfirewallRules.Add('RemotePortRanges', $currentfirewallRules.remotePortRanges)
+            $myfirewallRules.Add('ServiceName', $currentfirewallRules.serviceName)
+            if ($null -ne $currentfirewallRules.trafficDirection)
             {
-                $myfirewallRules.Add('TrafficDirection', $getValue.AdditionalProperties.firewallRules.trafficDirection.toString())
+                $myfirewallRules.Add('TrafficDirection', $currentfirewallRules.trafficDirection.toString())
             }
             if ($myfirewallRules.values.Where({ $null -ne $_ }).count -gt 0)
             {
@@ -3632,7 +3632,7 @@ function Set-TargetResource
         [System.Boolean]
         $SupportsScopeTags,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -3685,15 +3685,7 @@ function Set-TargetResource
     #endregion
 
     $currentInstance = Get-TargetResource @PSBoundParameters
-
-    $PSBoundParameters.Remove('Ensure') | Out-Null
-    $PSBoundParameters.Remove('Credential') | Out-Null
-    $PSBoundParameters.Remove('ApplicationId') | Out-Null
-    $PSBoundParameters.Remove('ApplicationSecret') | Out-Null
-    $PSBoundParameters.Remove('TenantId') | Out-Null
-    $PSBoundParameters.Remove('CertificateThumbprint') | Out-Null
-    $PSBoundParameters.Remove('ManagedIdentity') | Out-Null
-    $PSBoundParameters.Remove('Verbose') | Out-Null
+    $PSBoundParameters = Remove-M365DSCAuthenticationParameter -BoundParameters $PSBoundParameters
 
     if ($Ensure -eq 'Present' -and $currentInstance.Ensure -eq 'Absent')
     {
@@ -4755,7 +4747,7 @@ function Test-TargetResource
         [System.Boolean]
         $SupportsScopeTags,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Id,
 
@@ -4810,6 +4802,8 @@ function Test-TargetResource
 
     $CurrentValues = Get-TargetResource @PSBoundParameters
     $ValuesToCheck = ([Hashtable]$PSBoundParameters).clone()
+    $ValuesToCheck = Remove-M365DSCAuthenticationParameter -BoundParameters $ValuesToCheck
+    $ValuesToCheck.Remove('Id') | Out-Null
 
     if ($CurrentValues.Ensure -ne $PSBoundParameters.Ensure)
     {
@@ -4841,11 +4835,6 @@ function Test-TargetResource
 
         }
     }
-
-    $ValuesToCheck.Remove('Credential') | Out-Null
-    $ValuesToCheck.Remove('ApplicationId') | Out-Null
-    $ValuesToCheck.Remove('TenantId') | Out-Null
-    $ValuesToCheck.Remove('ApplicationSecret') | Out-Null
 
     Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
     Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $ValuesToCheck)"
@@ -6087,7 +6076,8 @@ function Export-TargetResource
     }
     catch
     {
-        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*")
+        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*" -or `
+        $_.Exception -like "*Request not applicable to target tenant*")
         {
             Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) The current tenant is not registered for Intune."
         }

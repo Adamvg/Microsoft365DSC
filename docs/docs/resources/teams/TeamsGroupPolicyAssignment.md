@@ -5,7 +5,7 @@
 | Parameter | Attribute | DataType | Description | Allowed Values |
 | --- | --- | --- | --- | --- |
 | **GroupDisplayName** | Key | String | Group Displayname of the group the policys are assigned to | |
-| **GroupId** | Key | String | GroupId, alternatively to Group Displayname | |
+| **GroupId** | Write | String | GroupId, alternatively to Group Displayname | |
 | **PolicyType** | Key | String | Teams PolicyType. The type of the policy to be assigned. Possible values: | `ApplicationAccessPolicy`, `CallingLineIdentity`, `OnlineAudioConferencingRoutingPolicy`, `OnlineVoicemailPolicy`, `OnlineVoiceRoutingPolicy`, `TeamsAudioConferencingPolicy`, `TeamsCallHoldPolicy`, `TeamsCallParkPolicy`, `TeamsChannelsPolicy`, `TeamsComplianceRecordingPolicy`, `TeamsCortanaPolicy`, `TeamsEmergencyCallingPolicy`, `TeamsEnhancedEncryptionPolicy`, `TeamsFeedbackPolicy`, `TeamsFilesPolicy`, `TeamsIPPhonePolicy`, `TeamsMediaLoggingPolicy`, `TeamsMeetingBroadcastPolicy`, `TeamsMeetingPolicy`, `TeamsMessagingPolicy`, `TeamsMobilityPolicy`, `TeamsRoomVideoTeleConferencingPolicy`, `TeamsShiftsPolicy`, `TeamsUpdateManagementPolicy`, `TeamsVdiPolicy`, `TeamsVideoInteropServicePolicy`, `TenantDialPlan`, `ExternalAccessPolicy`, `TeamsAppSetupPolicy`, `TeamsCallingPolicy`, `TeamsEventsPolicy`, `TeamsMeetingBrandingPolicy`, `TeamsMeetingTemplatePermissionPolicy` |
 | **PolicyName** | Write | String | Teams PolicyName. The name of the policy to be assigned. | |
 | **Priority** | Write | String | Teams Priority. The rank of the policy assignment, relative to other group policy assignments for the same policy type | |
@@ -14,6 +14,7 @@
 | **ApplicationId** | Write | String | Id of the Azure Active Directory application to authenticate with. | |
 | **TenantId** | Write | String | Id of the Azure Active Directory tenant used for authentication. | |
 | **CertificateThumbprint** | Write | String | Thumbprint of the Azure Active Directory application's authentication certificate to use for authentication. | |
+| **ManagedIdentity** | Write | Boolean | Managed ID being used for authentication. | |
 
 ## Description
 
@@ -39,11 +40,11 @@ To authenticate with the Microsoft Graph API, this resource required the followi
 
 - **Read**
 
-    - Organization.Read.All, User.Read.All, Group.ReadWrite.All, AppCatalog.ReadWrite.All, TeamSettings.ReadWrite.All, Channel.Delete.All, ChannelSettings.ReadWrite.All, ChannelMember.ReadWrite.All
+    - Organization.Read.All
 
 - **Update**
 
-    - Organization.Read.All, User.Read.All, Group.ReadWrite.All, AppCatalog.ReadWrite.All, TeamSettings.ReadWrite.All, Channel.Delete.All, ChannelSettings.ReadWrite.All, ChannelMember.ReadWrite.All
+    - Organization.Read.All
 
 ## Examples
 
@@ -58,7 +59,7 @@ Configuration Example
     (
         [Parameter(Mandatory = $true)]
         [PSCredential]
-        $credsGlobalAdmin
+        $Credscredential
     )
 
     Import-DscResource -ModuleName Microsoft365DSC
@@ -73,7 +74,7 @@ Configuration Example
             PolicyName       = 'AllowCalling'
             PolicyType       = 'TeamsCallingPolicy'
             Priority         = 1
-            Credential       = $credsGlobalAdmin
+            Credential       = $Credscredential
         }
     }
 }

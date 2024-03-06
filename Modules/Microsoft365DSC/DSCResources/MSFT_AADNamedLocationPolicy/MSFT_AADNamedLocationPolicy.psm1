@@ -5,7 +5,7 @@ function Get-TargetResource
     param
     (
         [Parameter()]
-        [ValidateSet('#microsoft.graph.countryNamedLocation', '#microsoft.graph.ipNamedLocation')]
+        [ValidateSet('#microsoft.graph.countryNamedLocation', '#microsoft.graph.ipNamedLocation', '#microsoft.graph.compliantNetworkNamedLocation')]
         [System.String]
         $OdataType,
 
@@ -166,7 +166,7 @@ function Set-TargetResource
     param
     (
         [Parameter()]
-        [ValidateSet('#microsoft.graph.countryNamedLocation', '#microsoft.graph.ipNamedLocation')]
+        [ValidateSet('#microsoft.graph.countryNamedLocation', '#microsoft.graph.ipNamedLocation', '#microsoft.graph.compliantNetworkNamedLocation')]
         [System.String]
         $OdataType,
 
@@ -291,7 +291,7 @@ function Set-TargetResource
     }
     # Named Location should exist and will be configured to desired state
     elseif ($Ensure -eq 'Present' -and $CurrentAADNamedLocation.Ensure -eq 'Present')
-    {   
+    {
         $VerboseAttributes = ($desiredValues | Out-String)
         Write-Verbose -Message "Updating existing AAD Named Location {$Displayname)} with attributes: $VerboseAttributes"
 
@@ -307,7 +307,7 @@ function Set-TargetResource
     # Named Location exist but should not
     elseif ($Ensure -eq 'Absent' -and $CurrentAADNamedLocation.Ensure -eq 'Present')
     {
-        Write-Verbose -Message "Removing AAD Named Location {$Displayname)}"
+        Write-Verbose -Message "Removing AAD Named Location {$Displayname} with id {$($currentAADNamedLocation.ID)}"
         Remove-MgBetaIdentityConditionalAccessNamedLocation -NamedLocationId $currentAADNamedLocation.ID
     }
 }
@@ -319,7 +319,7 @@ function Test-TargetResource
     param
     (
         [Parameter()]
-        [ValidateSet('#microsoft.graph.countryNamedLocation', '#microsoft.graph.ipNamedLocation')]
+        [ValidateSet('#microsoft.graph.countryNamedLocation', '#microsoft.graph.ipNamedLocation', '#microsoft.graph.compliantNetworkNamedLocation')]
         [System.String]
         $OdataType,
 
@@ -398,6 +398,7 @@ function Test-TargetResource
 
     $CurrentValues = Get-TargetResource @PSBoundParameters
 
+    Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
     Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $PSBoundParameters)"
 
     $ValuesToCheck = $PSBoundParameters

@@ -4,8 +4,8 @@
 
 | Parameter | Attribute | DataType | Description | Allowed Values |
 | --- | --- | --- | --- | --- |
-| **Id** | Key | String | Id of the access package catalog resource. | |
-| **DisplayName** | Required | String | The display name of the resource, such as the application name, group name or site name. | |
+| **DisplayName** | Key | String | The display name of the resource, such as the application name, group name or site name. | |
+| **Id** | Write | String | Id of the access package catalog resource. | |
 | **CatalogId** | Write | String | The unique ID of the access package catalog. | |
 | **AddedBy** | Write | String | The name of the user or application that first added this resource. Read-only. | |
 | **AddedOn** | Write | String | The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time. For example, midnight UTC on Jan 1, 2014 is 2014-01-01T00:00:00Z. Read-only. | |
@@ -141,7 +141,77 @@ Configuration Example
     param(
         [Parameter(Mandatory = $true)]
         [PSCredential]
-        $credsGlobalAdmin
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    $Domain = $Credscredential.Username.Split('@')[1]
+    node localhost
+    {
+        AADEntitlementManagementAccessPackageCatalogResource 'myAccessPackageCatalogResource'
+        {
+            DisplayName         = 'Human Resources'
+            CatalogId           = 'My Catalog'
+            Description         = "https://$($Domain.Split('.')[0]).sharepoint.com/sites/HumanResources"
+            IsPendingOnboarding = $true
+            OriginId            = "https://$($Domain.Split('.')[0]).sharepoint.com/sites/HumanResources"
+            OriginSystem        = 'SharePointOnline'
+            ResourceType        = 'SharePoint Online Site'
+            Url                 = "https://$($Domain.Split('.')[0]).sharepoint.com/sites/HumanResources"
+            Ensure              = 'Present'
+            Credential          = $Credscredential
+        }
+    }
+}
+```
+
+### Example 2
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    $Domain = $Credscredential.Username.Split('@')[1]
+    node localhost
+    {
+        AADEntitlementManagementAccessPackageCatalogResource 'myAccessPackageCatalogResource'
+        {
+            DisplayName         = 'Human Resources'
+            CatalogId           = 'My Catalog'
+            Description         = "https://$($Domain.Split('.')[0]).sharepoint.com/sites/HumanResources"
+            IsPendingOnboarding = $false # Updated Property
+            OriginId            = "https://$($Domain.Split('.')[0]).sharepoint.com/sites/HumanResources"
+            OriginSystem        = 'SharePointOnline'
+            ResourceType        = 'SharePoint Online Site'
+            Url                 = "https://$($Domain.Split('.')[0]).sharepoint.com/sites/HumanResources"
+            Ensure              = 'Present'
+            Credential          = $Credscredential
+        }
+    }
+}
+```
+
+### Example 3
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
     )
     Import-DscResource -ModuleName Microsoft365DSC
 
@@ -149,19 +219,9 @@ Configuration Example
     {
         AADEntitlementManagementAccessPackageCatalogResource 'myAccessPackageCatalogResource'
         {
-            Id                  = 'a694d6c3-57cb-4cb1-b32b-07bf1325df8e'
             DisplayName         = 'Communication site'
-            AddedBy             = 'admin@contoso.onmicrosoft.com'
-            AddedOn             = '05/11/2022 16:21:15'
-            CatalogId           = 'f34c2d92-9e9d-4703-ba9b-955b6ac8dcb3'
-            Description         = 'https://contoso.sharepoint.com/'
-            IsPendingOnboarding = $False
-            OriginId            = 'https://contoso.sharepoint.com/'
-            OriginSystem        = 'SharePointOnline'
-            ResourceType        = 'SharePoint Online Site'
-            Url                 = 'https://contoso.sharepoint.com/'
-            Ensure              = 'Present'
-            Credential          = $credsGlobalAdmin
+            Ensure              = 'Absent'
+            Credential          = $Credscredential
         }
     }
 }

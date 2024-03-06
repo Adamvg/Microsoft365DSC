@@ -4,7 +4,7 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Identity,
 
@@ -137,22 +137,18 @@ function Get-TargetResource
         [System.String]
         $AppDataEncryptionType,
 
-
         [Parameter()]
         [System.String]
         $MinimumWipeOSVersion,
-
 
         [Parameter()]
         [System.String]
         $MinimumWipeAppVersion,
 
-
         [Parameter()]
         [ValidateSet('block', 'wipe', 'warn')]
         [System.String]
         $AppActionIfDeviceComplianceRequired,
-
 
         [Parameter()]
         [ValidateSet('block', 'wipe', 'warn')]
@@ -163,11 +159,9 @@ function Get-TargetResource
         [System.String]
         $PinRequiredInsteadOfBiometricTimeout,
 
-
         [Parameter()]
         [System.Uint32]
         $AllowedOutboundClipboardSharingExceptionLength,
-
 
         [Parameter()]
         [ValidateSet('allow', 'blockOrganizationalData', 'block')]
@@ -191,22 +185,18 @@ function Get-TargetResource
         [System.String[]]
         $AllowedIosDeviceModels,
 
-
         [Parameter()]
         [ValidateSet('block', 'wipe', 'warn')]
         [System.String]
         $AppActionIfIosDeviceModelNotAllowed,
 
-
         [Parameter()]
         [System.Boolean]
         $FilterOpenInToOnlyManagedApps,
 
-
         [Parameter()]
         [System.Boolean]
         $DisableProtectionOfManagedOutboundOpenInData,
-
 
         [Parameter()]
         [System.Boolean]
@@ -288,7 +278,7 @@ function Get-TargetResource
 
         if ($null -eq $policy)
         {
-            Write-Verbose -Message "No iOS App Protection Policy {$DisplayName} was found"
+            Write-Verbose -Message "No iOS App Protection Policy {$DisplayName} was found."
             return $nullResult
         }
 
@@ -354,7 +344,7 @@ function Get-TargetResource
             $myPinRequiredInsteadOfBiometricTimeout = $policy.PinRequiredInsteadOfBiometricTimeout.toString()
         }
 
-        return [ordered]@{
+        return @{
             Identity                                       = $policy.id
             DisplayName                                    = $policy.DisplayName
             Description                                    = $policy.Description
@@ -433,7 +423,7 @@ function Set-TargetResource
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Identity,
 
@@ -735,7 +725,16 @@ function Set-TargetResource
         {
             if (-not [String]::IsNullOrEmpty($createParameters.$duration))
             {
-                $createParameters.$duration = [TimeSpan]::parse($createParameters.$duration)
+                Write-Verbose -Message "Parsing {$($createParameters.$duration)} into TimeSpan"
+                if ($createParameters.$duration.startswith('P'))
+                {
+                    $timespan = [System.Xml.XmlConvert]::ToTimeSpan($createParameters.$duration)
+                }
+                else
+                {
+                    $timespan = [TimeSpan]$createParameters.$duration
+                }
+                $createParameters.$duration = $timespan
             }
         }
         $myExemptedAppProtocols = @()
@@ -811,7 +810,7 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $Identity,
 
@@ -1190,7 +1189,8 @@ function Export-TargetResource
     }
     catch
     {
-        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*")
+        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*" -or `
+        $_.Exception -like "*Request not applicable to target tenant*")
         {
             Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) The current tenant is not registered for Intune."
         }

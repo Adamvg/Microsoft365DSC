@@ -68,9 +68,16 @@ function Invoke-TestHarness
     $testsToRun += @( $commonTestFiles.FullName )
 
     $filesToExecute = @()
-    foreach ($testToRun in $testsToRun)
+    if ($DscTestsPath -ne '')
     {
-        $filesToExecute += $testToRun
+        $filesToExecute += $DscTestsPath
+    }
+    else
+    {
+        foreach ($testToRun in $testsToRun)
+        {
+            $filesToExecute += $testToRun
+        }
     }
 
     $Params = [ordered]@{
@@ -86,6 +93,9 @@ function Invoke-TestHarness
         }
         Output = @{
             Verbosity = 'Normal'
+        }
+        Should = @{
+            ErrorAction = 'Continue'
         }
     }
 
@@ -161,6 +171,9 @@ function Invoke-QualityChecksHarness
         }
         Output = @{
             Verbosity = 'Detailed'
+        }
+        Should = @{
+            ErrorAction = 'Continue'
         }
     }
 

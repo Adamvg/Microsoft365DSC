@@ -8,7 +8,7 @@ function Get-TargetResource
         [System.String]
         $GroupDisplayName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $GroupId,
 
@@ -44,7 +44,11 @@ function Get-TargetResource
 
         [Parameter()]
         [System.String]
-        $CertificateThumbprint
+        $CertificateThumbprint,
+
+        [Parameter()]
+        [Switch]
+        $ManagedIdentity
     )
 
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftTeams' -InboundParameters $PSBoundParameters
@@ -66,35 +70,44 @@ function Get-TargetResource
 
     try
     {
-        Write-Verbose -Message "Getting GroupPOlicyAssignment for {$GroupId}"
-        $group = Find-CsGroup -SearchQuery $GroupId
-        if ($group.Length -gt 1)
-        {
-            Write-Verbose -Message "Found $($group.Length) groups with the id {$GroupId}"
-            $Group = $Group | Where-Object { $_.DisplayName -eq $GroupDisplayName }
-        }
-        else
-        {
-            Write-Verbose -Message "Getting GroupPolicyAssignment for {$GroupDisplayName}"
-            $Group = Find-CsGroup -SearchQuery $GroupDisplayName
-            if ($group.Length -gt 1)
-            {
-                Write-Verbose -Message "Found $($group.Length) groups with the name $GroupDisplayName"
-                $Group = $Group | Where-Object { $_.DisplayName -eq $GroupDisplayName }
-            }
-        }
+        Write-Verbose -Message "Getting Group with Id {$GroupId}"
+        $Group = Find-CsGroup -SearchQuery $GroupId -ExactMatchOnly $true -ErrorAction SilentlyContinue
+
         if ($null -eq $Group)
         {
-            Write-Verbose -Message "Group not found for $GroupDisplayName"
-            return $nullReturn
+            Write-Verbose -Message "Could not find Group with Id {$GroupId}, searching with DisplayName {$GroupDisplayName}"
+            $Group = Find-CsGroup -SearchQuery $GroupDisplayName -ExactMatchOnly $true -ErrorAction SilentlyContinue
+
+            if ($null -eq $Group)
+            {
+                Write-Verbose -Message "Could not find Group with DisplayName {$GroupDisplayName}"
+                return $nullReturn
+            }
+
+            if ($Group -and $Group.Count -gt 1)
+            {
+                Write-Verbose -Message "Found $($Group.Count) groups with DisplayName {$GroupDisplayName}"
+                $Group = $Group | Where-Object -FilterScript { $_.DisplayName -eq $GroupDisplayName }
+                if ($Group -and $Group.Count -gt 1)
+                {
+                    Write-Verbose -Message "Still found $($Group.Count) groups with DisplayName {$GroupDisplayName}"
+                    return $nullReturn
+                }
+            }
         }
+
+        Write-Verbose -Message "Getting GroupPolicyAssignment with PolicyType {$PolicyType} for Group {$($Group.DisplayName)}"
         $GroupPolicyAssignment = Get-CsGroupPolicyAssignment -GroupId $Group.Id -PolicyType $PolicyType -ErrorAction SilentlyContinue
         if ($null -eq $GroupPolicyAssignment)
         {
-            Write-Verbose -Message "GroupPolicyAssignment not found for $GroupDisplayName"
+            Write-Verbose -Message "GroupPolicyAssignment not found for Group {$GroupDisplayName}"
+            $nullReturn.GroupId = $Group.Id
             return $nullReturn
         }
-        Write-Verbose -Message "Found GroupPolicyAssignment $($Group.Displayname) with PolicyType:$($GroupPolicyAssignment.PolicyType) and Policy Name:$($GroupPolicyAssignment.PolicyName)"
+
+        $Message = "Found GroupPolicyAssignment with PolicyType {$($GroupPolicyAssignment.PolicyType)}, " + `
+            "PolicyName {$($GroupPolicyAssignment.PolicyName)} and Priority {$($GroupPolicyAssignment.Priority)} for Group {$($Group.Displayname)}"
+        Write-Verbose -Message $Message
         return @{
             GroupId               = $Group.Id
             GroupDisplayName      = $Group.Displayname
@@ -106,6 +119,7 @@ function Get-TargetResource
             ApplicationId         = $ApplicationId
             TenantId              = $TenantId
             CertificateThumbprint = $CertificateThumbprint
+            ManagedIdentity       = $ManagedIdentity.IsPresent
         }
     }
     catch
@@ -129,7 +143,7 @@ function Set-TargetResource
         [System.String]
         $GroupDisplayName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $GroupId,
 
@@ -165,7 +179,11 @@ function Set-TargetResource
 
         [Parameter()]
         [System.String]
-        $CertificateThumbprint
+        $CertificateThumbprint,
+
+        [Parameter()]
+        [Switch]
+        $ManagedIdentity
     )
 
     #Ensure the proper dependencies are installed in the current environment.
@@ -183,53 +201,22 @@ function Set-TargetResource
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftTeams' -InboundParameters $PSBoundParameters
     $CurrentValues = Get-TargetResource @PSBoundParameters
 
-    #check policyname
-    $command = 'get-cs' + $PolicyType
-    $policies = Invoke-Expression -Command $command -ErrorAction SilentlyContinue
-    $policymatch = $false
-    if ($null -ne $policies)
-    {
-        Foreach ($policy in $policies.Identity)
-        {
-            $match = '^Tag:' + $PolicyName + '$'
-            if ($policy -match $match)
-            {
-                $policymatch = $true
-            }
-        }
-    }
-    if ($null -eq $policies -or $policymatch -eq $false)
-    {
-        Write-Verbose -Message "No PolicyType found for $PolicyType"
-        return
-    }
-
-    #get groupid
-    if ($GroupId.Length -eq 0)
-    {
-        $Group = Find-CsGroup -SearchQuery $GroupDisplayName
-        if ($group.Length -gt 1)
-        {
-            Write-Verbose -Message "Found $($group.Length) groups with the name $GroupDisplayName"
-            $Group = $Group | Where-Object { $_.DisplayName -eq $GroupDisplayName }
-        }
-        if ($null -eq $Group)
-        {
-            Write-Verbose -Message "Group not found for $GroupDisplayName"
-            return
-        }
-        $GroupId = $Group.Id
-    }
-    Write-Verbose -Message "Retrieve GroupId for: $($GroupDisplayName)"
     try
     {
         if ($Ensure -eq 'Present' -and $CurrentValues.Ensure -eq 'Absent')
         {
             Write-Verbose -Message "Adding GroupPolicyAssignment for $GroupDisplayName"
-            New-CsGroupPolicyAssignment -GroupId $GroupId `
-                -PolicyType $PolicyType `
-                -PolicyName $PolicyName `
-                -Rank $Priority `
+            $parameters = @{
+                GroupId    = $CurrentValues.GroupId
+                PolicyType = $PolicyType
+                PolicyName = $PolicyName
+            }
+
+            if (-not [System.String]::IsNullOrEmpty($Priority))
+            {
+                $parameters.Add('Rank', $Priority)
+            }
+            New-CsGroupPolicyAssignment @parameters `
                 -ErrorAction Stop
         }
         elseif ($Ensure -eq 'Present' -and $CurrentValues.Ensure -eq 'Present')
@@ -238,7 +225,7 @@ function Set-TargetResource
             Write-Verbose -Message "Remove GroupPolicyAssignment for $GroupDisplayName"
             Remove-CsGroupPolicyAssignment -GroupId $CurrentValues.GroupId -PolicyType $CurrentValues.PolicyType
             Write-Verbose -Message "Adding GroupPolicyAssignment for $GroupDisplayName"
-            New-CsGroupPolicyAssignment -GroupId $GroupId `
+            New-CsGroupPolicyAssignment -GroupId $CurrentValues.GroupId `
                 -PolicyType $PolicyType `
                 -PolicyName $PolicyName `
                 -Rank $Priority `
@@ -272,7 +259,7 @@ function Test-TargetResource
         [System.String]
         $GroupDisplayName,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [System.String]
         $GroupId,
 
@@ -308,7 +295,11 @@ function Test-TargetResource
 
         [Parameter()]
         [System.String]
-        $CertificateThumbprint
+        $CertificateThumbprint,
+
+        [Parameter()]
+        [Switch]
+        $ManagedIdentity
     )
     #Ensure the proper dependencies are installed in the current environment.
     Confirm-M365DSCDependencies
@@ -359,7 +350,11 @@ function Export-TargetResource
 
         [Parameter()]
         [System.String]
-        $CertificateThumbprint
+        $CertificateThumbprint,
+
+        [Parameter()]
+        [Switch]
+        $ManagedIdentity
     )
     $InformationPreference = 'Continue'
     $ConnectionMode = New-M365DSCConnection -Workload 'MicrosoftTeams' -InboundParameters $PSBoundParameters
@@ -392,15 +387,25 @@ function Export-TargetResource
         $totalCount = $instances.Length
         foreach ($item in $instances)
         {
-            $Group = Find-CsGroup -SearchQuery $item.GroupId
+            [array]$Group = Find-CsGroup -SearchQuery $item.GroupId -ExactMatchOnly $true
             if ($null -eq $totalCount)
             {
                 $totalCount = 1
             }
-            Write-Host "    |---[$j/$totalCount] GroupPolicyAssignment {$($Group.DisplayName)}" -NoNewline
+            if ($totalCount -Eq 0)
+            {
+                $Message = "GPA The CSsGroup with ID {$($item.GroupId)} could not be found"
+                New-M365DSCLogEntry -Message $Message `
+                    -Source $MyInvocation.MyCommand.ModuleName
+                Write-Error $Message
+                $groupDisplayName = ""
+            } else {
+                $groupDisplayName = $Group[0].DisplayName
+            }
+            Write-Host "    |---[$j/$totalCount] GroupPolicyAssignment {$($Group[0].DisplayName)}" -NoNewline
             $results = @{
-                GroupDisplayName      = $Group.DisplayName
-                GroupId               = $Group.Id
+                GroupDisplayName      = $groupDisplayName
+                GroupId               = $item.GroupId
                 PolicyType            = $item.PolicyType
                 PolicyName            = $item.PolicyName
                 Priority              = $item.Priority
@@ -409,6 +414,7 @@ function Export-TargetResource
                 ApplicationId         = $ApplicationId
                 TenantId              = $TenantId
                 CertificateThumbprint = $CertificateThumbprint
+                ManagedIdentity       = $ManagedIdentity.IsPresent
             }
             #$results = Get-TargetResource @getParams
             $Results = Update-M365DSCExportAuthenticationResults -ConnectionMode $ConnectionMode `

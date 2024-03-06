@@ -80,7 +80,6 @@ function New-M365DSCLogEntry
 
         #region Telemetry
         $driftedData = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
-        $driftedData.Add('Event', 'Error')
         $driftedData.Add('CustomMessage', $Message)
         $driftedData.Add('Source', $Source)
 
@@ -180,7 +179,7 @@ function Add-M365DSCEvent
 
         [Parameter()]
         [System.String]
-        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift')]
+        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift', 'RuleEvaluation')]
         $EventType,
 
         [Parameter()]
@@ -448,7 +447,7 @@ function New-M365DSCNotificationEndPointRegistration
 
         [Parameter(Mandatory = $true)]
         [System.String]
-        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift')]
+        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift', 'RuleEvaluation')]
         $EventType
     )
 
@@ -498,7 +497,7 @@ function Remove-M365DSCNotificationEndPointRegistration
 
         [Parameter(Mandatory = $true)]
         [System.String]
-        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift')]
+        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift', 'RuleEvaluation')]
         $EventType
     )
 
@@ -550,7 +549,7 @@ function Get-M365DSCNotificationEndPointRegistration
 
         [Parameter()]
         [System.String]
-        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift')]
+        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift', 'RuleEvaluation')]
         $EventType
     )
 
@@ -606,7 +605,7 @@ function Send-M365DSCNotificationEndPointMessage
 
         [Parameter()]
         [System.String]
-        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift')]
+        [ValidateSet('Drift', 'Error', 'Warning', 'NonDrift', 'RuleEvaluation')]
         $EventType
     )
 

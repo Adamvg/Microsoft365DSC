@@ -129,9 +129,9 @@ function Get-TargetResource
             Write-Verbose -Message 'GroupID was specified'
             try
             {
-                if ($null -ne $Script:exportedGroups-and $Script:ExportMode)
+                if ($null -ne $Script:exportedGroups -and $Script:ExportMode)
                 {
-                    $Group = $Script:exportedGroups | Where-Object -FilterScript {$_.Id -eq $Id}
+                    $Group = $Script:exportedGroups | Where-Object -FilterScript { $_.Id -eq $Id }
                 }
                 else
                 {
@@ -141,13 +141,14 @@ function Get-TargetResource
             catch
             {
                 Write-Verbose -Message "Couldn't get group by ID, trying by name"
-                if ($null -ne $Script:exportedGroups-and $Script:ExportMode)
+                if ($null -ne $Script:exportedGroups -and $Script:ExportMode)
                 {
-                    $Group = $Script:exportedGroups | Where-Object -FilterScript {$_.DisplayName -eq $DisplayName}
+                    $Group = $Script:exportedGroups | Where-Object -FilterScript { $_.DisplayName -eq $DisplayName }
                 }
                 else
                 {
-                    $Group = Get-MgGroup -Filter "DisplayName eq '$DisplayName'" -ErrorAction Stop
+                    $filter = "DisplayName eq '$DisplayName'" -replace "'", "''"
+                    $Group = Get-MgGroup -Filter $filter -ErrorAction Stop
                 }
                 if ($Group.Length -gt 1)
                 {
@@ -159,13 +160,14 @@ function Get-TargetResource
         {
             Write-Verbose -Message 'Id was NOT specified'
             ## Can retreive multiple AAD Groups since displayname is not unique
-            if ($null -ne $Script:exportedGroups-and $Script:ExportMode)
+            if ($null -ne $Script:exportedGroups -and $Script:ExportMode)
             {
-                $Group = $Script:exportedGroups | Where-Object -FilterScript {$_.DisplayName -eq $DisplayName}
+                $Group = $Script:exportedGroups | Where-Object -FilterScript { $_.DisplayName -eq $DisplayName }
             }
             else
             {
-                $Group = Get-MgGroup -Filter "DisplayName eq '$DisplayName'" -ErrorAction Stop
+                $filter = "DisplayName eq '$DisplayName'" -replace "'", "''"
+                $Group = Get-MgGroup -Filter $filter -ErrorAction Stop
             }
             if ($Group.Length -gt 1)
             {
@@ -511,7 +513,49 @@ function Set-TargetResource
 
     $currentParameters.Remove('AssignedLicenses') | Out-Null
 
-    if ($Ensure -eq 'Present' -and $currentGroup.Ensure -eq 'Present')
+    if ($Ensure -eq 'Present' -and $currentGroup.Ensure -eq 'Absent')
+    {
+        Write-Verbose -Message "Checking to see if an existing deleted group exists with DisplayName {$DisplayName}"
+        $restorinExisting = $false
+        [Array]$groups = Get-MgBetaDirectoryDeletedItemAsGroup -Filter "DisplayName eq '$DisplayName'"
+        if ($groups.Length -gt 1)
+        {
+            throw "Multiple deleted groups with the name {$DisplayName} were found. Cannot restore the existig group. Please ensure that you either have no instance of the group in the deleted list or that you have a single one."
+        }
+
+        if ($groups.Length -eq 1)
+        {
+            Write-Verbose -Message "Found an instance of a deleted group {$DisplayName}. Restoring it."
+            Restore-MgBetaDirectoryDeletedItem -DirectoryObjectId $groups[0].Id
+            $restoringExisting = $true
+            $currentGroup = Get-MgGroup -Filter "DisplayName eq '$DisplayName'" -ErrorAction Stop
+        }
+
+        if (-not $restoringExisting)
+        {
+            Write-Verbose -Message "Creating new group {$DisplayName}"
+            $currentParameters.Remove('Id') | Out-Null
+
+            try
+            {
+                Write-Verbose -Message "Creating Group with Values: $(Convert-M365DscHashtableToString -Hashtable $currentParameters)"
+                $currentGroup = New-MgGroup @currentParameters
+                Write-Verbose -Message "Created Group $($currentGroup.id)"
+            }
+            catch
+            {
+                Write-Verbose -Message $_
+                New-M365DSCLogEntry -Message "Couldn't create group $DisplayName" `
+                    -Exception $_ `
+                    -Source $MyInvocation.MyCommand.ModuleName
+            }
+        }
+        if ($assignedLicensesGUIDs.Length -gt 0)
+        {
+            Set-MgGroupLicense -GroupId $currentGroup.Id -AddLicenses $licensesToAdd -RemoveLicenses @()
+        }
+    }
+    if ($Ensure -eq 'Present')
     {
         Write-Verbose -Message "Group {$DisplayName} exists and it should."
         try
@@ -553,30 +597,6 @@ function Set-TargetResource
         catch
         {
             New-M365DSCLogEntry -Message "Couldn't set group $DisplayName" `
-                -Exception $_ `
-                -Source $MyInvocation.MyCommand.ModuleName
-        }
-    }
-    elseif ($Ensure -eq 'Present' -and $currentGroup.Ensure -eq 'Absent')
-    {
-        Write-Verbose -Message "Creating new group {$DisplayName}"
-        $currentParameters.Remove('Id') | Out-Null
-
-        try
-        {
-            Write-Verbose -Message "Creating Group with Values: $(Convert-M365DscHashtableToString -Hashtable $currentParameters)"
-            $currentGroup = New-MgGroup @currentParameters
-
-            Write-Verbose -Message "Created Group $($currentGroup.id)"
-            if ($assignedLicensesGUIDs.Length -gt 0)
-            {
-                Set-MgGroupLicense -GroupId $currentGroup.Id -AddLicenses $licensesToAdd -RemoveLicenses @()
-            }
-        }
-        catch
-        {
-            Write-Verbose -Message $_
-            New-M365DSCLogEntry -Message "Couldn't create group $DisplayName" `
                 -Exception $_ `
                 -Source $MyInvocation.MyCommand.ModuleName
         }
@@ -623,7 +643,17 @@ function Set-TargetResource
                 $ownerObject = @{
                     '@odata.id' = "https://graph.microsoft.com/v1.0/users/{$($user.Id)}"
                 }
-                New-MgGroupOwnerByRef -GroupId ($currentGroup.Id) -BodyParameter $ownerObject | Out-Null
+                try
+                {
+                    New-MgGroupOwnerByRef -GroupId ($currentGroup.Id) -BodyParameter $ownerObject -ErrorAction Stop | Out-Null
+                }
+                catch
+                {
+                    if ($_.Exception.Message -notlike '*One or more added object references already exist for the following modified properties*')
+                    {
+                        throw $_
+                    }
+                }
             }
             elseif ($diff.SideIndicator -eq '<=')
             {
@@ -917,6 +947,7 @@ function Test-TargetResource
 
     $CurrentValues = Get-TargetResource @PSBoundParameters
 
+    Write-Verbose -Message "Current Values: $(Convert-M365DscHashtableToString -Hashtable $CurrentValues)"
     Write-Verbose -Message "Target Values: $(Convert-M365DscHashtableToString -Hashtable $PSBoundParameters)"
 
     # Check Licenses
@@ -1047,10 +1078,39 @@ function Export-TargetResource
             All         = [switch]$true
             ErrorAction = 'Stop'
         }
-        if ($Filter -like "*endsWith*") {
+
+        # Define the list of attributes
+        $attributesToCheck = @(
+            'description',
+            'displayName',
+            'hasMembersWithLicenseErrors',
+            'mail',
+            'mailNickname',
+            'onPremisesSecurityIdentifier',
+            'onPremisesSyncEnabled',
+            'preferredLanguage'
+        )
+
+        # Initialize a flag to indicate whether any attribute matches the condition
+        $matchConditionFound = $false
+
+        # Check each attribute in the list
+        foreach ($attribute in $attributesToCheck)
+        {
+            if ($Filter -like "*$attribute eq null*")
+            {
+                $matchConditionFound = $true
+                break
+            }
+        }
+
+        # If any attribute matches, add parameters to $ExportParameters
+        if ($matchConditionFound -or $Filter -like '*endsWith*')
+        {
             $ExportParameters.Add('CountVariable', 'count')
             $ExportParameters.Add('ConsistencyLevel', 'eventual')
         }
+
         [array] $Script:exportedGroups = Get-MgGroup @ExportParameters
         $Script:exportedGroups = $Script:exportedGroups | Where-Object -FilterScript {
             -not ($_.MailEnabled -and ($null -eq $_.GroupTypes -or $_.GroupTypes.Length -eq 0)) -and `

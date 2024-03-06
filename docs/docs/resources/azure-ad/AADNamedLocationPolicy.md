@@ -4,11 +4,11 @@
 
 | Parameter | Attribute | DataType | Description | Allowed Values |
 | --- | --- | --- | --- | --- |
-| **OdataType** | Write | String | Specifies the Odata Type of a Named Location object in Azure Active Directory | `#microsoft.graph.countryNamedLocation`, `#microsoft.graph.ipNamedLocation` |
+| **OdataType** | Write | String | Specifies the Odata Type of a Named Location object in Azure Active Directory | `#microsoft.graph.countryNamedLocation`, `#microsoft.graph.ipNamedLocation`, `#microsoft.graph.compliantNetworkNamedLocation` |
 | **Id** | Write | String | Specifies the ID of a Named Location in Azure Active Directory. | |
 | **DisplayName** | Key | String | Specifies the Display Name of a Named Location in Azure Active Directory | |
 | **IpRanges** | Write | StringArray[] | Specifies the IP ranges of the Named Location in Azure Active Directory | |
-| **IsTrusted** | Write | Boolean | Specifies the isTrusted value for the Named Location in Azure Active Directory | |
+| **IsTrusted** | Write | Boolean | Specifies the isTrusted value for the Named Location (IP ranges only) in Azure Active Directory | |
 | **CountriesAndRegions** | Write | StringArray[] | Specifies the countries and regions for the Named Location in Azure Active Directory | |
 | **CountryLookupMethod** | Write | String | Determines what method is used to decide which country the user is located in. Possible values are clientIpAddress(default) and authenticatorAppGps. | `clientIpAddress`, `authenticatorAppGps` |
 | **IncludeUnknownCountriesAndRegions** | Write | Boolean | Specifies the includeUnknownCountriesAndRegions value for the Named Location in Azure Active Directory | |
@@ -63,7 +63,7 @@ Configuration Example
     param(
         [Parameter(Mandatory = $true)]
         [PSCredential]
-        $credsGlobalAdmin
+        $Credscredential
     )
     Import-DscResource -ModuleName Microsoft365DSC
 
@@ -73,19 +73,67 @@ Configuration Example
         {
             DisplayName = "Company Network"
             IpRanges    = @("2.1.1.1/32", "1.2.2.2/32")
-            IsTrusted   = $True
+            IsTrusted   = $False
             OdataType   = "#microsoft.graph.ipNamedLocation"
             Ensure      = "Present"
-            Credential  = $credsGlobalAdmin
+            Credential  = $Credscredential
         }
-        AADNamedLocationPolicy 'AllowedCountries'
+    }
+}
+```
+
+### Example 2
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        AADNamedLocationPolicy 'CompanyNetwork'
         {
-            CountriesAndRegions               = @("GH", "AX", "DZ", "AI", "AM")
-            DisplayName                       = "Allowed Countries"
-            IncludeUnknownCountriesAndRegions = $False
-            OdataType                         = "#microsoft.graph.countryNamedLocation"
-            Ensure                            = "Present"
-            Credential                        = $credsGlobalAdmin
+            DisplayName = "Company Network"
+            IpRanges    = @("2.1.1.1/32") # Updated Property
+            IsTrusted   = $False
+            OdataType   = "#microsoft.graph.ipNamedLocation"
+            Ensure      = "Present"
+            Credential  = $Credscredential
+        }
+    }
+}
+```
+
+### Example 3
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        AADNamedLocationPolicy 'CompanyNetwork'
+        {
+            DisplayName = "Company Network"
+            Ensure      = "Absent"
+            Credential  = $Credscredential
         }
     }
 }

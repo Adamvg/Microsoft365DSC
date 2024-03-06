@@ -22,9 +22,9 @@
 | **RestrictPeerSelectionBy** | Write | String | Specifies to restrict peer selection via selected option. | `notConfigured`, `subnetMask` |
 | **VpnPeerCaching** | Write | String | Specifies whether the device is allowed to participate in Peer Caching while connected via VPN to the domain network. | `notConfigured`, `enabled`, `disabled` |
 | **Description** | Write | String | Admin provided description of the Device Configuration. | |
-| **DisplayName** | Required | String | Admin provided name of the device configuration. | |
+| **DisplayName** | Key | String | Admin provided name of the device configuration. | |
 | **SupportsScopeTags** | Write | Boolean | Indicates whether or not the underlying Device Configuration supports the assignment of scope tags. Assigning to the ScopeTags property is not allowed when this value is false and entities will not be visible to scoped users. This occurs for Legacy policies created in Silverlight and can be resolved by deleting and recreating the policy in the Azure Portal. This property is read-only. | |
-| **Id** | Key | String | The unique identifier for an entity. Read-only. | |
+| **Id** | Write | String | The unique identifier for an entity. Read-only. | |
 | **Assignments** | Write | MSFT_DeviceManagementConfigurationPolicyAssignments[] | Represents the assignment to the Intune policy. | |
 | **Ensure** | Write | String | Present ensures the policy exists, absent ensures it is removed. | `Present`, `Absent` |
 | **Credential** | Write | PSCredential | Credentials of the Admin | |
@@ -44,6 +44,7 @@
 | **deviceAndAppManagementAssignmentFilterType** | Write | String | The type of filter of the target assignment i.e. Exclude or Include. Possible values are:none, include, exclude. | `none`, `include`, `exclude` |
 | **deviceAndAppManagementAssignmentFilterId** | Write | String | The Id of the filter for the target assignment. | |
 | **groupId** | Write | String | The group Id that is the target of the assignment. | |
+| **groupDisplayName** | Write | String | The group Display Name that is the target of the assignment. | |
 | **collectionId** | Write | String | The collection Id that is the target of the assignment.(ConfigMgr) | |
 
 ### MSFT_MicrosoftGraphDeliveryOptimizationBandwidth
@@ -167,7 +168,6 @@ Configuration Example
                 GroupIdSourceOption = 'adSite'
                 odataType = '#microsoft.graph.deliveryOptimizationGroupIdSourceOptions'
             };
-            Id                                                        = "c86efa80-248b-4002-80d4-e70ea151a4c7";
             MaximumCacheAgeInDays                                     = 3;
             MaximumCacheSize                                          = MSFT_MicrosoftGraphdeliveryOptimizationMaxCacheSize{
                 MaximumCacheSizeInGigabytes = 4
@@ -181,6 +181,94 @@ Configuration Example
             RestrictPeerSelectionBy                                   = "subnetMask";
             SupportsScopeTags                                         = $True;
             VpnPeerCaching                                            = "enabled";
+        }
+    }
+}
+```
+
+### Example 2
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        IntuneDeviceConfigurationDeliveryOptimizationPolicyWindows10 'Example'
+        {
+            Assignments                                               = @(
+                MSFT_DeviceManagementConfigurationPolicyAssignments{
+                    deviceAndAppManagementAssignmentFilterType = 'none'
+                    dataType = '#microsoft.graph.allLicensedUsersAssignmentTarget'
+                }
+            );
+            BackgroundDownloadFromHttpDelayInSeconds                  = 4;
+            BandwidthMode                                             = MSFT_MicrosoftGraphdeliveryOptimizationBandwidth{
+                MaximumDownloadBandwidthInKilobytesPerSecond = 22
+                MaximumUploadBandwidthInKilobytesPerSecond = 33
+                odataType = '#microsoft.graph.deliveryOptimizationBandwidthAbsolute'
+            };
+            CacheServerBackgroundDownloadFallbackToHttpDelayInSeconds = 5; # Updated Property
+            CacheServerForegroundDownloadFallbackToHttpDelayInSeconds = 3;
+            CacheServerHostNames                                      = @("domain.com");
+            Credential                                                = $Credscredential;
+            DeliveryOptimizationMode                                  = "httpWithPeeringPrivateGroup";
+            DisplayName                                               = "delivery optimisation";
+            Ensure                                                    = "Present";
+            ForegroundDownloadFromHttpDelayInSeconds                  = 234;
+            GroupIdSource                                             = MSFT_MicrosoftGraphdeliveryOptimizationGroupIdSource{
+                GroupIdSourceOption = 'adSite'
+                odataType = '#microsoft.graph.deliveryOptimizationGroupIdSourceOptions'
+            };
+            MaximumCacheAgeInDays                                     = 3;
+            MaximumCacheSize                                          = MSFT_MicrosoftGraphdeliveryOptimizationMaxCacheSize{
+                MaximumCacheSizeInGigabytes = 4
+                odataType = '#microsoft.graph.deliveryOptimizationMaxCacheSizeAbsolute'
+            };
+            MinimumBatteryPercentageAllowedToUpload                   = 4;
+            MinimumDiskSizeAllowedToPeerInGigabytes                   = 3;
+            MinimumFileSizeToCacheInMegabytes                         = 3;
+            MinimumRamAllowedToPeerInGigabytes                        = 3;
+            ModifyCacheLocation                                       = "%systemdrive%";
+            RestrictPeerSelectionBy                                   = "subnetMask";
+            SupportsScopeTags                                         = $True;
+            VpnPeerCaching                                            = "enabled";
+        }
+    }
+}
+```
+
+### Example 3
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        IntuneDeviceConfigurationDeliveryOptimizationPolicyWindows10 'Example'
+        {
+            Credential                                                = $Credscredential;
+            DisplayName                                               = "delivery optimisation";
+            Ensure                                                    = "Absent";
         }
     }
 }

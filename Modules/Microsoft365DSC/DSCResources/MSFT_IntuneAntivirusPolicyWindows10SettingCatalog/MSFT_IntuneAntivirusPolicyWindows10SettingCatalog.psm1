@@ -4,7 +4,7 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [Parameter(Mandatory = $True)]
+        [Parameter()]
         [System.String]
         $Identity,
 
@@ -215,6 +215,21 @@ function Get-TargetResource
         [ValidateSet('0', '1', '2')]
         [System.String]
         $puaprotection,
+
+        [Parameter()]
+        [ValidateSet('0', '2', '3', '4', '5', '6')]
+        [System.String]
+        $engineupdateschannel,
+
+        [Parameter()]
+        [ValidateSet('0', '2', '3', '4', '5', '6')]
+        [System.String]
+        $platformupdateschannel,
+
+        [Parameter()]
+        [ValidateSet('0', '4', '5')]
+        [System.String]
+        $securityintelligenceupdateschannel,
 
         [Parameter()]
         [ValidateSet('0', '1', '2')]
@@ -362,8 +377,14 @@ function Get-TargetResource
 
         if ($null -eq $policy)
         {
-            Write-Verbose -Message "No Endpoint Protection Policy with Id {$Identity} was found"
-            return $nullResult
+            Write-Verbose -Message "No policy with Id {$Identity} was found. Trying to retrieve by name {$DisplayName}."
+            $policy = Get-MgBetaDeviceManagementConfigurationPolicy -Filter "Name eq '$DisplayName'"
+
+            if ($null -eq $policy)
+            {
+                Write-Verbose -Message "No policy with name {$DisplayName} was found."
+                return $nullResult
+            }
         }
 
         #Retrieve policy specific settings
@@ -464,7 +485,7 @@ function Set-TargetResource
     [CmdletBinding()]
     param
     (
-        [Parameter(Mandatory = $True)]
+        [Parameter()]
         [System.String]
         $Identity,
 
@@ -675,6 +696,21 @@ function Set-TargetResource
         [ValidateSet('0', '1', '2')]
         [System.String]
         $puaprotection,
+
+        [Parameter()]
+        [ValidateSet('0', '2', '3', '4', '5', '6')]
+        [System.String]
+        $engineupdateschannel,
+
+        [Parameter()]
+        [ValidateSet('0', '2', '3', '4', '5', '6')]
+        [System.String]
+        $platformupdateschannel,
+
+        [Parameter()]
+        [ValidateSet('0', '4', '5')]
+        [System.String]
+        $securityintelligenceupdateschannel,
 
         [Parameter()]
         [ValidateSet('0', '1', '2')]
@@ -860,7 +896,7 @@ function Set-TargetResource
             -TemplateReferenceId $templateReferenceId
 
         Update-IntuneDeviceConfigurationPolicy `
-            -DeviceConfigurationPolicyId $Identity `
+            -DeviceConfigurationPolicyId $currentPolicy.Identity `
             -Name $DisplayName `
             -Description $Description `
             -TemplateReferenceId $templateReferenceId `
@@ -874,8 +910,8 @@ function Set-TargetResource
     }
     elseif ($Ensure -eq 'Absent' -and $currentPolicy.Ensure -eq 'Present')
     {
-        Write-Verbose -Message "Removing Endpoint Protection Policy {$currentPolicy.DisplayName}"
-        Remove-MgBetaDeviceManagementConfigurationPolicy -DeviceManagementConfigurationPolicyId $Identity
+        Write-Verbose -Message "Removing Endpoint Protection Policy {$($currentPolicy.DisplayName)}"
+        Remove-MgBetaDeviceManagementConfigurationPolicy -DeviceManagementConfigurationPolicyId $currentPolicy.Identity
     }
 }
 
@@ -885,7 +921,7 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [Parameter(Mandatory = $True)]
+        [Parameter()]
         [System.String]
         $Identity,
 
@@ -1098,6 +1134,21 @@ function Test-TargetResource
         $puaprotection,
 
         [Parameter()]
+        [ValidateSet('0', '2', '3', '4', '5', '6')]
+        [System.String]
+        $engineupdateschannel,
+
+        [Parameter()]
+        [ValidateSet('0', '2', '3', '4', '5', '6')]
+        [System.String]
+        $platformupdateschannel,
+
+        [Parameter()]
+        [ValidateSet('0', '4', '5')]
+        [System.String]
+        $securityintelligenceupdateschannel,
+
+        [Parameter()]
         [ValidateSet('0', '1', '2')]
         [System.String]
         $realtimescandirection,
@@ -1235,9 +1286,9 @@ function Test-TargetResource
     $ValuesToCheck = ([Hashtable]$PSBoundParameters).clone()
     $ValuesToCheck.Remove('Identity') | Out-Null
 
-    if ($CurrentValues.Ensure -eq 'Absent')
+    if ($CurrentValues.Ensure -ne $PSBoundParameters.Ensure)
     {
-        Write-Verbose -Message 'The policy was not found'
+        Write-Verbose -Message "Test-TargetResource returned $false"
         return $false
     }
     $testResult = $true
@@ -1367,11 +1418,12 @@ function Export-TargetResource
     try
     {
         $templateFamily = 'endpointSecurityAntivirus'
+        $templateReferences = "d948ff9b-99cb-4ee0-8012-1fbc09685377_1", "e3f74c5a-a6de-411d-aef6-eb15628f3a0a_1", "45fea5e9-280d-4da1-9792-fb5736da0ca9_1","804339ad-1553-4478-a742-138fb5807418_1"
         [array]$policies = Get-MgBetaDeviceManagementConfigurationPolicy `
             -ErrorAction Stop `
             -All:$true `
             -Filter $Filter
-        $policies = $policies | Where-Object -FilterScript { $_.TemplateReference.TemplateFamily -eq $templateFamily }
+        $policies = $policies | Where-Object -FilterScript { $_.TemplateReference.TemplateFamily -eq $templateFamily -and $_.TemplateReference.TemplateId -in $templateReferences }
 
         if ($policies.Length -eq 0)
         {
@@ -1446,7 +1498,8 @@ function Export-TargetResource
     }
     catch
     {
-        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*")
+        if ($_.Exception -like '*401*' -or $_.ErrorDetails.Message -like "*`"ErrorCode`":`"Forbidden`"*" -or `
+        $_.Exception -like "*Request not applicable to target tenant*")
         {
             Write-Host "`r`n    $($Global:M365DSCEmojiYellowCircle) The current tenant is not registered for Intune."
         }
@@ -1539,7 +1592,7 @@ function New-IntuneDeviceConfigurationPolicy
             'settings'          = $Settings
         }
         $body = $policy | ConvertTo-Json -Depth 20
-        Write-Verbose -Message $body
+        #Write-Verbose -Message $body
         Invoke-MgGraphRequest -Method POST -Uri $Uri -Body $body -ErrorAction Stop
 
     }
@@ -1551,6 +1604,7 @@ function New-IntuneDeviceConfigurationPolicy
             -TenantId $TenantId `
             -Credential $Credential
 
+        #write-verbose ($_ | out-string)
         return $null
     }
 }
@@ -1744,7 +1798,7 @@ function Format-M365DSCIntuneSettingCatalogPolicySettings
 
     $settings = @()
 
-    $templateSettings = Get-MgBetaDeviceManagementConfigurationPolicyTemplateSettingTemplate -DeviceManagementConfigurationPolicyTemplateId $templateReferenceId
+    $templateSettings = Get-MgBetaDeviceManagementConfigurationPolicyTemplateSettingTemplate -DeviceManagementConfigurationPolicyTemplateId $templateReferenceId -All
 
     #write-verbose -Message ( $DSCParams|out-string)
 
@@ -1768,6 +1822,11 @@ function Format-M365DSCIntuneSettingCatalogPolicySettings
             $setting.add('@odata.type', '#microsoft.graph.deviceManagementConfigurationSetting')
 
             $includeValueReference = $true
+            $includeSettingInstanceReference = $true
+            $doNotIncludesettingInstanceReferenceKeys = @(
+                'highseveritythreats'
+                'lowseveritythreats'
+            )
             $noValueReferenceKeys = @(
                 'excludedpaths'
                 'excludedprocesses'
@@ -1777,9 +1836,14 @@ function Format-M365DSCIntuneSettingCatalogPolicySettings
             {
                 $includeValueReference = $false
             }
+            if ($originalKey -in $doNotIncludesettingInstanceReferenceKeys)
+            {
+                $includeSettingInstanceReference = $false
+            }
             $myFormattedSetting = Format-M365DSCParamsToSettingInstance -DSCParams @{$settingKey = $DSCParams."$originalKey" } `
                 -TemplateSetting $templateSetting `
-                -IncludeSettingValueTemplateId $includeValueReference
+                -IncludeSettingValueTemplateId $includeValueReference `
+                -IncludeSettingInstanceTemplateId $includeSettingInstanceReference
 
             $setting.add('settingInstance', $myFormattedSetting)
             $settings += $setting
@@ -1820,9 +1884,36 @@ function Format-M365DSCIntuneSettingCatalogPolicySettings
                 -FilterScript { $_.settingDefinitionId -like "*$key" }
             if ($templateValue)
             {
+                $includeValueReference = $true
+                $includeSettingInstanceReference = $true
+                $doNotIncludesettingInstanceReferenceKeys = @(
+                    'highseveritythreats'
+                    'lowseveritythreats'
+                    'moderateseveritythreats'
+                    'severethreats'
+                )
+                $noValueReferenceKeys = @(
+                    'excludedpaths'
+                    'excludedprocesses'
+                    'excludedextensions'
+                    'highseveritythreats'
+                    'lowseveritythreats'
+                    'moderateseveritythreats'
+                    'severethreats'
+                )
+                if ($key -in $noValueReferenceKeys)
+                {
+                    $includeValueReference = $false
+                }
+                if ($key -in $doNotIncludesettingInstanceReferenceKeys)
+                {
+                    $includeSettingInstanceReference = $false
+                }
                 $groupSettingCollectionValueChild = Format-M365DSCParamsToSettingInstance `
                     -DSCParams @{$key = $DSCParams."$key" } `
-                    -TemplateSetting $templateValue
+                    -TemplateSetting $templateValue `
+                    -IncludeSettingValueTemplateId $includeValueReference `
+                    -IncludeSettingInstanceTemplateId $includeSettingInstanceReference
 
                 $groupSettingCollectionValueChildren += $groupSettingCollectionValueChild
             }

@@ -9,9 +9,9 @@
 | **ComputerNameSuffixRandomCharCount** | Write | UInt32 | Dynamically generated characters used as suffix for computer name. Valid values 3 to 14 | |
 | **OrganizationalUnit** | Write | String | Organizational unit (OU) where the computer account will be created. If this parameter is NULL, the well known computer object container will be used as published in the domain. | |
 | **Description** | Write | String | Admin provided description of the Device Configuration. | |
-| **DisplayName** | Required | String | Admin provided name of the device configuration. | |
+| **DisplayName** | Key | String | Admin provided name of the device configuration. | |
 | **SupportsScopeTags** | Write | Boolean | Indicates whether or not the underlying Device Configuration supports the assignment of scope tags. Assigning to the ScopeTags property is not allowed when this value is false and entities will not be visible to scoped users. This occurs for Legacy policies created in Silverlight and can be resolved by deleting and recreating the policy in the Azure Portal. This property is read-only. | |
-| **Id** | Key | String | The unique identifier for an entity. Read-only. | |
+| **Id** | Write | String | The unique identifier for an entity. Read-only. | |
 | **Assignments** | Write | MSFT_DeviceManagementConfigurationPolicyAssignments[] | Represents the assignment to the Intune policy. | |
 | **Ensure** | Write | String | Present ensures the policy exists, absent ensures it is removed. | `Present`, `Absent` |
 | **Credential** | Write | PSCredential | Credentials of the Admin | |
@@ -31,6 +31,7 @@
 | **deviceAndAppManagementAssignmentFilterType** | Write | String | The type of filter of the target assignment i.e. Exclude or Include. Possible values are:none, include, exclude. | `none`, `include`, `exclude` |
 | **deviceAndAppManagementAssignmentFilterId** | Write | String | The Id of the filter for the target assignment. | |
 | **groupId** | Write | String | The group Id that is the target of the assignment. | |
+| **groupDisplayName** | Write | String | The group Display Name that is the target of the assignment. | |
 | **collectionId** | Write | String | The collection Id that is the target of the assignment.(ConfigMgr) | |
 
 
@@ -97,9 +98,73 @@ Configuration Example
             Credential                        = $Credscredential;
             DisplayName                       = "Domain Join";
             Ensure                            = "Present";
-            Id                                = "1ab2945b-36b5-4b34-bbf5-717885c15654";
             OrganizationalUnit                = "OU=workstation,CN=domain,CN=com";
             SupportsScopeTags                 = $True;
+        }
+    }
+}
+```
+
+### Example 2
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        IntuneDeviceConfigurationDomainJoinPolicyWindows10 'Example'
+        {
+            ActiveDirectoryDomainName         = "domain.com";
+            Assignments                       = @(
+                MSFT_DeviceManagementConfigurationPolicyAssignments{
+                    deviceAndAppManagementAssignmentFilterType = 'none'
+                    dataType = '#microsoft.graph.allLicensedUsersAssignmentTarget'
+                }
+            );
+            ComputerNameStaticPrefix          = "WK-";
+            ComputerNameSuffixRandomCharCount = 12;
+            Credential                        = $Credscredential;
+            DisplayName                       = "Domain Join";
+            Ensure                            = "Present";
+            OrganizationalUnit                = "OU=workstation,CN=domain,CN=com";
+            SupportsScopeTags                 = $False; # Updated Property
+        }
+    }
+}
+```
+
+### Example 3
+
+This example is used to test new resources and showcase the usage of new resources being worked on.
+It is not meant to use as a production baseline.
+
+```powershell
+Configuration Example
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCredential]
+        $Credscredential
+    )
+    Import-DscResource -ModuleName Microsoft365DSC
+
+    node localhost
+    {
+        IntuneDeviceConfigurationDomainJoinPolicyWindows10 'Example'
+        {
+            Credential                        = $Credscredential;
+            DisplayName                       = "Domain Join";
+            Ensure                            = "Absent";
         }
     }
 }
